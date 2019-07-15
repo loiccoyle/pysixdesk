@@ -64,22 +64,40 @@ def replace(patterns, replacements, source, dest):
     '''Reads a source file and writes the destination file.
     In each line, replaces patterns with repleacements.
     '''
-    status = False
-    if os.path.isfile(source):
-        fin = open(source, 'r')
-        fout = open(dest, 'w')
-        num = len(patterns)
-        for line in fin:
-            for i in range(num):
-                line = re.sub(patterns[i], str(replacements[i]), line)
-            fout.write(line)
-        fin.close()
-        fout.close()
+    if not os.path.isfile(source):
+        raise FileNotFoundError("The file %s doesn't exist!" % source)
+
+    with open(source, 'r') as fin:
+        fin_lines = fin.readlines()
+
+    with open(dest, 'w') as fout:
+        for line in fin_lines:
+            for pat, rep in zip(patterns, replacements):
+                rep_line = substitute(pat, rep, line)
+            fout.write(rep_line)
+
+
+def substitute(pat, rep, line):
+    '''
+    If a replacement pattern is provided, match with '%PAT={number}',
+    and replace with 'rep'.
+    If a replacement is not provided, match with '%PAT={number}' and
+    remove '%PAT='.
+
+    The idea is to give the user making the mask file the ability to leave in
+    default values, with the following syntax:
+        qx0 = %QX=62.28
+    (note the lack of space around the '=')
+    If a replacement is provided, then replace '%Qx=62.28' with the replacement,
+    otherwise, remove '%Qx='
+    '''
+    if rep != '':
+        # replaces '%PAT= 123' with rep
+        rep_line = re.sub(f'{pat}( *= *\d+.\d+|)', str(rep), line)
     else:
-        print("The file %s doesn't exist!" % source)
-        return status
-    status = True
-    return status
+        # replaces '%PAT ={number}' with ''
+        rep_line = re.sub(f'{pat} *= *(?=(\d+.\d+))', '', line)
+    return rep_line
 
 
 def encode_strings(inputs):

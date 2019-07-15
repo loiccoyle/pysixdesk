@@ -139,10 +139,18 @@ def madxjob(madx_config, mask_config):
     patterns = ['%' + a for a in mask_config.keys()]
     values = list(mask_config.values())
     madx_in = 'madx_in'
-    status = utils.replace(patterns, values, mask_name, madx_in)
-    if not status:
-        content = "Failed to generate actual madx input file!"
-        raise Exception(content)
+
+    logger.info('===== MADX job =====')
+    logger.info(f'patterns : {patterns}')
+    logger.info(f'values : {values}')
+    logger.info(f'mask_name : {mask_name}')
+    logger.info(f'madx_in : {madx_in}')
+
+    try:
+        utils.replace(patterns, values, mask_name, madx_in)
+    except Exception as e:
+        logger.error("Failed to generate actual madx input file!")
+        raise e
 
     # Begin to execute madx job
     command = madxexe + " " + madx_in
@@ -270,10 +278,18 @@ def sixtrackjob(config, config_re, jobname, **kwargs):
     for s in temp_files:
         dest = s + ".t1"
         source = os.path.join('../', s)
-        status = utils.replace(patterns, values, source, dest)
-        if not status:
-            content = "Failed to generate input file for oneturn sixtrack!"
-            raise Exception(content)
+
+        logger.info('===== SixTrack job =====')
+        logger.info(f'patterns : {patterns}')
+        logger.info(f'values : {values}')
+        logger.info(f'source : {source}')
+        logger.info(f'dest : {dest}')
+
+        try:
+            utils.replace(patterns, values, source, dest)
+        except Exception as e:
+            logger.error("Failed to generate input file for oneturn sixtrack!")
+            raise e
 
         output.append(dest)
     temp1 = input_files['fc.3']
