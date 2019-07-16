@@ -9,7 +9,7 @@ import copy
 from pysixdesk import submission
 from pysixdesk import Study
 from math import sqrt, pi, sin, cos
-from machineparams import MachineConfig
+from pysixdesk.machineparams import MachineConfig
 
 
 class MyStudy(Study):
@@ -35,12 +35,50 @@ class MyStudy(Study):
 
         # All parameters are case-sensitive
         # the name of mask file
-        self.madx_input["mask_file"] = 'hl10.mask'
-        self.madx_params["SEEDRAN"] = [1, 2]  # all seeds in the study
-        # all chromaticity in the study
-        self.madx_params["QP"] = list(range(1, 1 + 1))
-        # all octupole currents in the study
-        self.madx_params["IOCT"] = list(range(100, 200 + 1, 100))
+        NRJ = 7000.0
+        Q_x = 62.31
+        Q_y = 60.32
+        Q_split = int(Q_x) - int(Q_y)
+        Qp_col = 3.0
+        Sig_e_col = 1.1e-4
+        Sig_t_col = 0.075
+
+        RF_vol_col = 8.0
+        RF_vol_inj = 16.0
+
+        Sig_e_inj = 4.5e-4
+        Sig_t_inj = 0.130
+
+        self.madx_input["mask_file"] = 'lhc_aperture/hl13B1_elens_aper.mask'
+        self.madx_params["SEEDRAN"] = 1  # all seeds in the study
+        self.madx_params["IOCT"] = -300
+        self.madx_params["NRJ"] = NRJ
+        self.madx_params['B_LENGTH'] = 0.075
+        self.madx_params['B_SEP'] = 0.25
+        self.madx_params['EMIT_NORM'] = 2.5e-6
+        self.madx_params['N_PART'] = 2.2e11
+
+        # crossing angle stuff
+        self.madx_params['PHI_IR5'] = 0.000
+        self.madx_params['PHI_IR7'] = 90.000
+        self.madx_params['XING'] = 255
+
+        self.madx_params['Q_SPLIT'] = Q_split
+        # only used if NRJ < 5000
+        self.madx_params['QX_INJ'] = 62.28
+        self.madx_params['QY_INJ'] = 60.31
+        self.madx_params['QP_INJ'] = 3.0
+        self.madx_params['SIG_E_INJ'] = Sig_e_inj
+        self.madx_params['SIG_T_INJ'] = Sig_t_inj
+        self.madx_params['RF_VOL_INJ'] = RF_vol_inj
+        # only used i NRJ > 5000
+        self.madx_params['QX_COL'] = Q_x
+        self.madx_params['QY_COL'] = Q_y
+        self.madx_params['QP_COL'] = Qp_col
+        self.madx_params['SIG_E_COL'] = Sig_e_col
+        self.madx_params['SIG_T_COL'] = Sig_t_col
+        self.madx_params['RF_VOL_COL'] = RF_vol_col
+
         self.oneturn_sixtrack_input['temp'] = ['fort.3']
         self.oneturn_sixtrack_output = ['oneturnresult']
         self.oneturn_sixtrack_params.update(machine_params)

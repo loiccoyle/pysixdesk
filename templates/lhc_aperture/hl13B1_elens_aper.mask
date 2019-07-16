@@ -280,7 +280,7 @@ value,mux_ip15_ref,muy_ip15_ref;
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++;
 phi_IR1 = %PHI_IR1=90.000; phi_IR5 =   %PHI_IR5=0.000; ! For round and flat optics
 !phi_IR1 =    0.000; phi_IR5 =   90.000; ! For flathv optics
-if (not_a_mask==1){ xing15= %XING=255; } else { xing15=%XING=255; };
+if (not_a_mask==1){ xing15= %XING=255; } else { xing15= %XING=255; };
 sep15=0.75;
 xing8=-250; sep8=-2; on_lhcb=+1;
 xing2= 170; sep2=2; on_alice=1;
