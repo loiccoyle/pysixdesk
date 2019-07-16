@@ -102,8 +102,11 @@ class WorkSpace(object):
         for item in os.listdir(tem_path):
             sour = os.path.join(tem_path, item)
             dest = os.path.join(self.paths['templates'], item)
-            if os.path.isfile(sour) and not os.path.isfile(dest):
-                shutil.copy2(sour, dest)
+            if os.path.exists(sour) and not os.path.exists(dest):
+                if os.path.isfile(sour):
+                    shutil.copy2(sour, dest)
+                elif os.path.isdir(sour):
+                    shutil.copytree(sour, dest)
                 content = '...copied template file %s from %s .' % (
                     item, utils.PYSIXDESK_ABSPATH)
                 self._logger.info(content)
@@ -173,8 +176,11 @@ class WorkSpace(object):
         for item in os.listdir(self.paths['templates']):
             sour = os.path.join(self.paths['templates'], item)
             dest = os.path.join(study_path, item)
-            if os.path.isfile(sour) and not os.path.isfile(dest):
-                shutil.copy2(sour, dest)
+            if os.path.exists(sour) and not os.path.exists(dest):
+                if os.path.isfile(sour):
+                    shutil.copy2(sour, dest)
+                elif os.path.isdir(sour):
+                    shutil.copytree(sour, dest)
                 content = '...copied template file %s from %s .' % (
                     item, self.paths['templates'])
                 self._logger.info(content)

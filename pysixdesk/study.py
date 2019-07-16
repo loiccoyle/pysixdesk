@@ -429,12 +429,11 @@ class Study(object):
     def update_db(self):
         '''Update the database whith the user-defined parameters'''
         temp = self.paths["templates"]
-        cont = os.listdir(temp)
         require = []
         require += self.oneturn_sixtrack_input["temp"]
         require.append(self.madx_input["mask_file"])
         for r in require:
-            if r not in cont:
+            if not os.path.exists(os.path.join(temp, r)):
                 content = "The required file %s isn't found in %s!" % (r, temp)
                 raise FileNotFoundError(content)
         outputs = self.db.select('templates', self.tables['templates'].keys())
@@ -513,7 +512,7 @@ class Study(object):
                 vl = element[i]
                 mask_sec[ky] = str(vl)
                 madx_table[ky] = vl
-            prefix = self.madx_input['mask_file'].split('.')[0]
+            prefix = self.madx_input['mask_file'].split('.')[0].replace('/', '_')
             job_name = self.name_conven(prefix, keys, element, '')
             # madx_input = self.paths['preprocess_in']
             wu_id += 1

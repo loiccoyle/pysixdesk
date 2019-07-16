@@ -143,14 +143,25 @@ def compress_buf(data, source='file'):
     The data source can be file,gzip,str'''
     status = False
     zbuf = io.BytesIO()
-    if source == 'file' and os.path.isfile(data):
+
+    if source == 'file' and os.path.exists(data):
         with gzip.GzipFile(mode='wb', fileobj=zbuf) as zfile:
-            with open(data, 'rb') as f_in:
-                buf = f_in.read()
-                zfile.write(buf)
+
+            if os.path.isfile(data):
+                with open(data, 'rb') as f_in:
+                    buf = f_in.read()
+                    zfile.write(buf)
+
+            elif os.path.isdir(data):
+                for file in os.listdir(data):
+                    with open(os.path.join(data, file), 'rb') as f_in:
+                        buf = f_in.read()
+                        zfile.write(buf)
+
     elif source == 'gzip' and os.path.isfile(data):
         with open(data, 'rb') as f_in:
             shutil.copyfileobj(f_in, zbuf)
+
     elif source == 'str' and isinstance(data, str):
         buf = data.encode()
         with gzip.GzipFile(mode='wb', fileobj=zbuf) as zfile:

@@ -130,7 +130,11 @@ def madxjob(madx_config, mask_config):
     if 'mask' not in mask_name:
         mask_name = mask_name + '.mask'
     mask_file = os.path.join(source_path, mask_name)
-    shutil.copy2(mask_file, mask_name)
+    if os.path.dirname(source_path) != '':
+        shutil.copytree(os.path.join(source_path, os.path.dirname(mask_name)),
+                        os.path.dirname(mask_name))
+    else:
+        shutil.copy2(mask_file, mask_name)
     dest_path = madx_config["dest_path"]
     if not os.path.isdir(dest_path):
         os.mkdir(dest_path)
