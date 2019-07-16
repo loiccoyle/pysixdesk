@@ -144,17 +144,14 @@ def madxjob(madx_config, mask_config):
     values = list(mask_config.values())
     madx_in = 'madx_in'
 
-    logger.info('===== MADX job =====')
-    logger.info(f'patterns : {patterns}')
-    logger.info(f'values : {values}')
-    logger.info(f'mask_name : {mask_name}')
-    logger.info(f'madx_in : {madx_in}')
-
     try:
         utils.replace(patterns, values, mask_name, madx_in)
     except Exception as e:
         logger.error("Failed to generate actual madx input file!")
         raise e
+    logger.info('▼▼▼▼▼▼▼▼▼▼▼▼▼ mask diff ▼▼▼▼▼▼▼▼▼▼▼▼▼')
+    utils.diff(mask_name, madx_in, logger=logger)
+    logger.info('▲▲▲▲▲▲▲▲▲▲▲▲▲ mask diff ▲▲▲▲▲▲▲▲▲▲▲▲▲')
 
     # Begin to execute madx job
     command = madxexe + " " + madx_in
@@ -162,6 +159,7 @@ def madxjob(madx_config, mask_config):
     logger.info("MADX job is running...")
     output = os.popen(command)
     outputlines = output.readlines()
+    print(''.join(outputlines))
     with open('madx_stdout', 'w') as mad_out:
         mad_out.writelines(outputlines)
     if 'finished normally' not in outputlines[-2]:
@@ -283,17 +281,14 @@ def sixtrackjob(config, config_re, jobname, **kwargs):
         dest = s + ".t1"
         source = os.path.join('../', s)
 
-        logger.info('===== SixTrack job =====')
-        logger.info(f'patterns : {patterns}')
-        logger.info(f'values : {values}')
-        logger.info(f'source : {source}')
-        logger.info(f'dest : {dest}')
-
         try:
             utils.replace(patterns, values, source, dest)
         except Exception as e:
             logger.error("Failed to generate input file for oneturn sixtrack!")
             raise e
+        logger.info(f'▼▼▼▼▼▼▼▼▼▼▼▼▼ {source} diff ▼▼▼▼▼▼▼▼▼▼▼▼▼')
+        utils.diff(source, dest, logger=logger)
+        logger.info(f'▲▲▲▲▲▲▲▲▲▲▲▲▲ {source} diff ▲▲▲▲▲▲▲▲▲▲▲▲▲')
 
         output.append(dest)
     temp1 = input_files['fc.3']
@@ -304,7 +299,11 @@ def sixtrackjob(config, config_re, jobname, **kwargs):
         content = "The %s file doesn't exist!" % temp1
         raise FileNotFoundError(content)
 
+    print(f'Concatenating {output}')
     concatenate_files(output, 'fort.3')
+    with open('fort.3', 'r') as file:
+        lines = file.read()
+    print(lines)
 
     # prepare the other input files
     if os.path.isfile('../fort.2') and os.path.isfile('../fort.16'):
@@ -318,10 +317,11 @@ def sixtrackjob(config, config_re, jobname, **kwargs):
     # actually run
     logger.info('Sixtrack job %s is running...' % jobname)
     six_output = os.popen(sixtrack_exe)
-    outputlines = six_output.readlines()
+    outputlines = six_output.read()
+    print(outputlines)
     output_name = '../' + jobname + '.output'
     with open(output_name, 'w') as six_out:
-        six_out.writelines(outputlines)
+        six_out.write(outputlines)
     if not os.path.isfile('fort.10'):
         logger.error("The %s sixtrack job for chromaticity FAILED!" % jobname)
         logger.info("Check the file %s which contains the SixTrack fort.6 output." % output_name)

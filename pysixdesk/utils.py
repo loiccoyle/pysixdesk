@@ -5,6 +5,7 @@ import sys
 import gzip
 import shutil
 import logging
+import difflib
 import traceback
 
 # Gobal variables
@@ -255,3 +256,39 @@ def condor_logger():
     logger.addHandler(h2)
     logger.setLevel(logging.DEBUG)
     return logger
+
+
+def diff(file1, file2, logger=None, **kwargs):
+    '''
+    Prints the diff of file1 and file2.
+    file1/file2: either path to file, 'str', or 'list'
+    if 'str' assumes it is the contents of the file e.i. from:
+        file1 = f.read()
+    if 'list' assumes it is the contents of the file e.i. from:
+        file1 = f.readlines()
+    if path to existing file then open and read the contents to
+    make the diff.
+    Any **kwargs are passed to difflib.unified_diff
+    '''
+    if logger is not None and isinstance(logger, logging.Logger):
+        display = logger.info
+    else:
+        display = print
+
+    def get_lines(file):
+        if os.path.isfile(file):
+            with open(file) as f:
+                f_lines = f.read().split('\n')
+        elif isinstance(file, str):
+            f_lines = file.split('\n')
+        elif isinstance(file, list):
+            f_lines = file
+        else:
+            raise TypeError('"file" Must be either "str", "list" or "file path".')
+        return f_lines
+
+    file1 = get_lines(file1)
+    file2 = get_lines(file2)
+
+    for line in difflib.unified_diff(file1, file2, **kwargs):
+        display(line)
