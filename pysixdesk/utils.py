@@ -63,6 +63,9 @@ def download_output(filenames, dest, zp=True):
 def replace(patterns, replacements, source, dest):
     '''Reads a source file and writes the destination file.
     In each line, replaces patterns with repleacements.
+
+    Performance can be improved by compiling the regex prior to
+    the looping.
     '''
     if not os.path.isfile(source):
         raise FileNotFoundError("The file %s doesn't exist!" % source)
@@ -73,8 +76,8 @@ def replace(patterns, replacements, source, dest):
     with open(dest, 'w') as fout:
         for line in fin_lines:
             for pat, rep in zip(patterns, replacements):
-                rep_line = substitute(pat, rep, line)
-            fout.write(rep_line)
+                line = substitute(pat, rep, line)
+            fout.write(line)
 
 
 def substitute(pat, rep, line):
@@ -91,12 +94,12 @@ def substitute(pat, rep, line):
     If a replacement is provided, then replace '%Qx=62.28' with the replacement,
     otherwise, remove '%Qx='
     '''
-    if rep != '':
-        # replaces '%PAT= 123' with rep
-        rep_line = re.sub(f'{pat}( *= *\d+.\d+|)', str(rep), line)
+    if rep is not None:
+        # replaces '%PAT= -1.23e12' with rep
+        rep_line = re.sub(fr'{pat}( *= *-?\d*\.?\d*((e|E)-?\d+)?|)', str(rep), line)
     else:
         # replaces '%PAT ={number}' with ''
-        rep_line = re.sub(f'{pat} *= *(?=(\d+.\d+))', '', line)
+        rep_line = re.sub(fr'{pat} *= *(?=(-?\d*\.?\d*((e|E)-?\d+)?))', '', line)
     return rep_line
 
 
