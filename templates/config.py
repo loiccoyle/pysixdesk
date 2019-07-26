@@ -4,12 +4,14 @@ This is a template file of preparing parameters for madx and sixtracking jobs.
 import os
 import ast
 import copy
+from functools import partial
 
 # need to check if this import works properly
 from pysixdesk import submission
 from pysixdesk import Study
 from math import sqrt, pi, sin, cos
 from pysixdesk.machineparams import MachineConfig
+from pysixdesk.study_params import StudyParams
 
 
 class MyStudy(Study):
@@ -32,147 +34,62 @@ class MyStudy(Study):
 
         # Get the default values for specified machine with specified runtype
         machine_params = MachineConfig('LHC').parameters('inj')
+        mask_file = 'lhc_aperture/hl13B1_elens_aper.mask'
 
-        # All parameters are case-sensitive
-        # the name of mask file
-        NRJ = 7000.0
-        Q_x = 62.31
-        Q_y = 60.32
-        Q_split = int(Q_x) - int(Q_y)
-        Qp_col = 3.0
-        Sig_e_col = 1.1e-4
-        Sig_t_col = 0.075
+        self.params = StudyParams(os.path.join(self.study_path, mask_file),
+                                  fort_path=os.path.join(self.study_path, 'fort.3'))
+        self.params['SEEDRAN'] = 1
+        amp = [8, 10, 12]  # The amplitude
+        self.params['amp'] = list(zip(amp, amp[1:]))  # Take pairs
+        self.params['kang'] = list(range(1, 1 + 1))  # The angle
+        self.params['kmax'] = 5
+        self.params['Runnam'] = name
+        self.params.update(machine_params)
 
-        RF_vol_col = 8.0
-        RF_vol_inj = 16.0
+        def calc_angle(kang, kmax):
+            return kang / (kmax + 1)
 
-        Sig_e_inj = 4.5e-4
-        Sig_t_inj = 0.130
+        self.params.add_calc(['kang', 'kmax'], 'angle', calc_angle)
 
-        self.madx_input["mask_file"] = 'lhc_aperture/hl13B1_elens_aper.mask'
-        self.madx_params["SEEDRAN"] = 1  # all seeds in the study
-        self.madx_params["IOCT"] = -300
-        self.madx_params["NRJ"] = NRJ
-        self.madx_params['B_LENGTH'] = 0.075
-        self.madx_params['B_SEP'] = 0.25
-        self.madx_params['EMIT_NORM'] = 2.5e-6
-        self.madx_params['N_PART'] = 2.2e11
+        def calc_amp(angle, emit, e0, pmass, amp, pre_id=None, db=self.db):
 
-        # crossing angle stuff
-        self.madx_params['PHI_IR5'] = 0.000
-        self.madx_params['PHI_IR7'] = 90.000
-        self.madx_params['XING'] = 255
+            def getval(db, pre_id, reqlist):
+                '''Get required values from oneturn sixtrack results'''
+                where = 'wu_id=%s' % pre_id
+                ids = db.select('preprocess_wu', ['task_id'], where)
+                if not ids:
+                    raise ValueError("Wrong preprocess job id %s!" % pre_id)
+                task_id = ids[0][0]
+                if task_id is None:
+                    raise Exception("Incomplete preprocess job id %s!" % pre_id)
+                where = 'task_id=%s' % task_id
+                values = db.select('oneturn_sixtrack_result', reqlist, where)
+                if not values:
+                    raise ValueError("Wrong task id %s!" % task_id)
+                return values[0]
 
-        self.madx_params['Q_SPLIT'] = Q_split
-        # only used if NRJ < 5000
-        self.madx_params['QX_INJ'] = 62.28
-        self.madx_params['QY_INJ'] = 60.31
-        self.madx_params['QP_INJ'] = 3.0
-        self.madx_params['SIG_E_INJ'] = Sig_e_inj
-        self.madx_params['SIG_T_INJ'] = Sig_t_inj
-        self.madx_params['RF_VOL_INJ'] = RF_vol_inj
-        # only used i NRJ > 5000
-        self.madx_params['QX_COL'] = Q_x
-        self.madx_params['QY_COL'] = Q_y
-        self.madx_params['QP_COL'] = Qp_col
-        self.madx_params['SIG_E_COL'] = Sig_e_col
-        self.madx_params['SIG_T_COL'] = Sig_t_col
-        self.madx_params['RF_VOL_COL'] = RF_vol_col
+            values = getval(db, pre_id, ['betax'])
+            beta_x = values[0]
+            tt = abs(sin(pi / 2 * angle) / cos(pi / 2 * angle))
+            ratio = 0.0 if tt < 1.0E-15 else tt**2
+            gamma = e0 / pmass
+            factor = sqrt(emit / gamma)
+            ax0t = factor * (sqrt(beta_x) + sqrt(beta_x * ratio) * cos(pi / 2 * angle))
+            return [a * ax0t for a in amp]
 
+        self.params.add_calc(['angle', 'emit', 'e0', 'pmass'],
+                             ['ax0s', 'ax1s'],
+                             partial(calc_amp, db=self.db))
+
+        # DEBUGGING:
+        self._logger.info('Parameters:')
+        [self._logger.info(f'{k}: {v}') for k, v in self.params.placeholders.items()]
+
+        self.madx_input["mask_file"] = mask_file
         self.oneturn_sixtrack_input['temp'] = ['fort.3']
         self.oneturn_sixtrack_output = ['oneturnresult']
-        self.oneturn_sixtrack_params.update(machine_params)
-        self.sixtrack_params = copy.deepcopy(self.oneturn_sixtrack_params)
-        self.sixtrack_params['turnss'] = 1e6  # number of turns to track
-        amp = [8, 10, 12]  # The amplitude
-        self.sixtrack_params['amp'] = list(zip(amp, amp[1:]))  # Take pairs
-        self.sixtrack_params['kang'] = list(range(1, 1 + 1))  # The angle
         self.sixtrack_input['temp'] = ['fort.3']
         self.sixtrack_input['input'] = copy.deepcopy(self.madx_output)
 
-        self.env['emit'] = 3.75
-        self.env['gamma'] = 7460.5
-        self.env['kmax'] = 5
-
         # Update the user-define parameters and objects
         self.customize()  # This call is mandatory
-
-    def pre_calc(self, paramdict, pre_id):
-        '''Further calculations for the specified parameters'''
-        # The angle should be calculated before amplitude
-        status = []
-        status.append(self.formulas('kang', 'angle', paramdict, pre_id))
-        status.append(self.formulas('amp', ['ax0s', 'ax1s'], paramdict, pre_id))
-        return all(status)
-
-    def formulas(self, source, dest, paramdict, pre_id):
-        '''The formulas for the further calculations,
-        this function should be customized by the user!
-        @source The source parameter name
-        @dest  The destination parameter name
-        @paramdict The parameter dictionary, the source parameter in the dict
-        will be replaced by destination parameter after calculation
-        @pre_id The identified preprocess job id
-        @return The status'''
-        if source not in paramdict.keys():
-            self._logger.info("Invalid parameter name %s!" % source)
-            return 0
-        value = paramdict.pop(source)
-        try:
-            value = ast.literal_eval(value)
-        except ValueError:
-            self._logger.error("Invalid source value for job %s!" % pre_id)
-            return 0
-        except:
-            self._logger.error("Unexpected error!", exc_info=True)
-            return 0
-        if source == 'amp':
-            if 'angle' not in paramdict.keys():
-                self._logger.error("The angle should be calculated before amplitude!")
-                return 0
-            try:
-                values = self.getval(pre_id, ['betax'])
-                beta_x = values[0]
-                kang = paramdict['angle']
-                kang = float(kang)
-                tt = abs(sin(pi / 2 * kang) / cos(pi / 2 * kang))
-                ratio = 0.0 if tt < 1.0E-15 else tt**2
-                emit = self.env['emit']
-                gamma = self.env['gamma']
-                factor = sqrt(emit / gamma)
-                ax0t = factor * (sqrt(beta_x) + sqrt(beta_x * ratio) * cos(pi / 2 * kang))
-                value0 = ax0t * value[0]
-                value1 = ax0t * value[1]
-                paramdict[dest[0]] = str(value0)
-                paramdict[dest[1]] = str(value1)
-                return 1
-            except:
-                self._logger("Unexpected error!", exc_info=True)
-                return 0
-        elif source == 'kang':
-            try:
-                kmax = self.env['kmax']
-                value1 = value / (kmax + 1)
-                paramdict[dest] = str(value1)
-                return 1
-            except Exception:
-                self._logger.error("Unexpected error!", exc_info=True)
-                return 0
-        else:
-            self._logger.error("There isn't a formula for parameter %s!" % dest)
-            return 0
-
-    def getval(self, pre_id, reqlist):
-        '''Get required values from oneturn sixtrack results'''
-        where = 'wu_id=%s' % pre_id
-        ids = self.db.select('preprocess_wu', ['task_id'], where)
-        if not ids:
-            raise ValueError("Wrong preprocess job id %s!" % pre_id)
-        task_id = ids[0][0]
-        if task_id is None:
-            raise Exception("Incomplete preprocess job id %s!" % pre_id)
-        where = 'task_id=%s' % task_id
-        values = self.db.select('oneturn_sixtrack_result', reqlist, where)
-        if not values:
-            raise ValueError("Wrong task id %s!" % task_id)
-        return values[0]

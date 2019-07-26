@@ -12,7 +12,6 @@ import configparser
 from . import dbtypedict
 from . import utils
 from . import gather
-from . import constants
 from . import submission
 from .pysixdb import SixDB
 
@@ -33,22 +32,51 @@ class Study(object):
         # All the requested parameters for a study
         self.paths = {}
         self.env = {}
-        self.madx_params = collections.OrderedDict()
+        self.params = None
+        self._madx_params = None
+        self._oneturn_sixtrack_params = None
+        self._sixtrack_params = None
         self.madx_input = {}
         self.madx_output = {}
-        self.oneturn_sixtrack_params = collections.OrderedDict()
         self.oneturn_sixtrack_input = {}
         self.oneturn_sixtrack_output = []
-        self.sixtrack_params = collections.OrderedDict()
         self.sixtrack_input = {}
         self.sixtrack_output = []
         self.tables = {}
         self.table_keys = {}
         self.pragma = collections.OrderedDict()
         self.boinc_vars = collections.OrderedDict()
+        self.db = None
         # initialize default values
         Study._defaults(self)
         Study._structure(self)
+
+    @property
+    def madx_params(self):
+        '''
+        loads the job's parameters at first call.
+        '''
+        if self._madx_params is None:
+            self._madx_params = self.params.madx_params
+        return self._madx_params
+
+    @property
+    def oneturn_sixtrack_params(self):
+        '''
+        loads the job's parameters at first call.
+        '''
+        if self._oneturn_sixtrack_params is None:
+            self._oneturn_sixtrack_params = self.params.oneturn_params
+        return self._oneturn_sixtrack_params
+
+    @property
+    def sixtrack_params(self):
+        '''
+        loads the job's parameters at first call.
+        '''
+        if self._sixtrack_params is None:
+            self._sixtrack_params = self.params.sixtrack_params
+        return self._sixtrack_params
 
     @property
     def cluster_class(self):
@@ -99,45 +127,11 @@ class Study(object):
             'fc.2': 'fort.2',
             'fc.3': 'fort.3.mad',
             'fc.3.aux': 'fort.3.aux',
+            'fc.3.aper': 'fort.3.aper',
             'fc.8': 'fort.8',
             'fc.16': 'fort.16',
             'fc.34': 'fort.34'}
-        self.oneturn_sixtrack_params = collections.OrderedDict([
-            ("turnss", 1),
-            ("nss", 1),
-            ("ax0s", 0.1),
-            ("ax1s", 0.1),
-            ("imc", 1),
-            ("iclo6", 2),
-            ("writebins", 1),
-            ("ratios", 1),
-            ("Runnam", 'FirstTurn'),
-            ("idfor", 0),
-            ("ibtype", 0),
-            ("ition", 0),
-            ("CHRO", '/'),
-            ("TUNE", '/'),
-            ("POST", 'POST'),
-            ("POS1", ''),
-            ("ndafi", 1),
-            ("tunex", 62.28),
-            ("tuney", 60.31),
-            ("inttunex", 62.28),
-            ("inttuney", 60.31),
-            ("DIFF", '/DIFF'),
-            ("DIF1", '/'),
-            ("pmass", constants.PROTON_MASS),
-            ("emit_beam", 3.75),
-            ("e0", 7000),
-            ("bunch_charge", 1.15E11),
-            ("CHROM", 0),
-            ("chrom_eps", 0.000001),
-            ("dp1", 0.000001),
-            ("dp2", 0.000001),
-            ("chromx", 2),
-            ("chromy", 2)])
-        # ("TUNEVAL", '/'),
-        # ("CHROVAL", '/')])
+
         self.oneturn_sixtrack_input['input'] = copy.deepcopy(self.madx_output)
         self.oneturn_sixtrack_output = ['fort.10']
         self.sixtrack_output = ['fort.10']
@@ -779,9 +773,17 @@ class Study(object):
             in_fil = utils.evlt(utils.decompress_buf, [buf, None, 'buf'])
             self.config.clear()
             self.config.read_string(in_fil)
-            paramsdict = self.config['fort3']
-            status = self.pre_calc(paramsdict, pre_id)  # further calculation
-            if status:
+            # paramsdict = self.config['fort3']
+            # print(self.config['fort3'])
+            # self.params.calc()
+            # status = self.pre_calc(paramsdict, pre_id)  # further calculation
+            # print(self.config['fort3'])
+            try:
+                self.config['fort3'] = self.params.calc(pre_id=pre_id)
+            except Exception:
+                pass
+            # if status
+            else:
                 f_out = io.StringIO()
                 self.config.write(f_out)
                 out = f_out.getvalue()
