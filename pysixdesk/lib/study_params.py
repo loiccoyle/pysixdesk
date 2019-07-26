@@ -89,6 +89,7 @@ class StudyParams:
                              ("PHI_IR5", 0),
                              ("PHI_IR1", 90.0),
                              ("IOCT", -300),
+                             ("BSEP", 25),
                              ])
 
         amp = [8, 10, 12]  # The amplitude

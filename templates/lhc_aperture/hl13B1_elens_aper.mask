@@ -142,7 +142,7 @@ ON_COLLISION:=1;
 !General switch to install bb lens (0/1)
 ON_BB_SWITCH:=1;
 
-b_t_dist := %B_SEP=25.;  !bunch separation [ns]
+b_t_dist := %BSEP;  !bunch separation [ns]
 if (not_a_mask==1){
   emittance_norm := %emit_beam *1.0e-6; Nb_0 := %bunch_charge;
 } else {
