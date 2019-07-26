@@ -9,7 +9,8 @@ from .utils import PYSIXDESK_ABSPATH
 
 class FixedDict(OrderedDict):
     '''
-    OrderedDict but with locking mechanism which stops user from entering new keys
+    OrderedDict but with locking mechanism which stops user from entering new
+    keys
     '''
 
     def __init__(self, *args, **kwargs):
@@ -35,14 +36,19 @@ class FixedDict(OrderedDict):
 
 class StudyParams:
     '''
-    Looks for any placeholders in the provided paths and extracts the placeholder if no
-    default values found, use None.
-    Unifies all the placeholders in self.placeholders, the user can edit it's values,
-    but not it's keys. The placeholders are split up again, into oneturn, sixtrack and
+    Looks for any placeholders in the provided paths and extracts the
+    placeholder if no default values found, use None.
+    Unifies all the placeholders in self.placeholders, the user can edit it's
+    values, but not it's keys. This implements the __setitem__ and __getitem__
+    so the user can interact with the StudyParams object similarly to a dict.
+
+    The placeholders are split up again, into oneturn, sixtrack and
     and mask dicts for use in pysixdesk.
     To get the placeholder patterns for the mask file use self.madx_params.
-    To get the placeholder patterns for the onturn sixtrack file use self.oneturn_params.
-    To get the placeholder patterns for the sixtrack file use self.sixtrack_params.
+    To get the placeholder patterns for the onturn sixtrack file use
+    self.oneturn_params.
+    To get the placeholder patterns for the sixtrack file use
+    self.sixtrack_params.
     '''
 
     def __init__(self, mask_path, fort_path=f'{PYSIXDESK_ABSPATH}/templates/fort.3'):
@@ -123,7 +129,7 @@ class StudyParams:
         values
 
         :param folder: if True, check also the files in the same folder as
-        the mask file, for placeholder patterns.
+        the mask file for placeholder patterns.
         '''
         dirname = os.path.dirname(file_path)
         if folder and dirname != '':
@@ -215,18 +221,6 @@ class StudyParams:
             self._madx_params = madx
         return self._madx_params
 
-    def __repr__(self):
-        return self.placeholders.__repr__()
-
-    def __setitem__(self, key, val):
-        if key in self.phasespace_params.keys():
-            self.phasespace_params[key] = val
-        else:
-            self.placeholders.__setitem__(key, val)
-
-    def update(self, *args, **kwargs):
-        self.placeholders.update(*args, **kwargs)
-
     def add_calc(self, in_keys, out_key, fun):
         '''
         Add calculations to the calc queue. Any extra arguments of
@@ -253,6 +247,21 @@ class StudyParams:
                     self.sixtrack_params[k] = out[i]
         return self.sixtrack_params
 
+    # set and get items like a dict
+    def __repr__(self):
+        return self.placeholders.__repr__()
+
+    def __setitem__(self, key, val):
+        if key in self.phasespace_params.keys():
+            self.phasespace_params[key] = val
+        else:
+            self.placeholders.__setitem__(key, val)
+
+    def __getitem__(self, key):
+        return self.placeholders.__getitem__(key)
+
+    def update(self, *args, **kwargs):
+        self.placeholders.update(*args, **kwargs)
 
 # for testing
 if __name__ == "__main__":
