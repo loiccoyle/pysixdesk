@@ -383,17 +383,9 @@ class Study(object):
             boinc_spool, self.st_pre, 'results')
         self.env['surv_percent'] = 1
 
-        def bigint_check(val):
-            if not isinstance(val, collections.Iterable) or isinstance(val, str):
-                val = [val]
-            return any([v > 2147483647 for v in val])
-
         for key, val in self.madx_params.items():
-            # max value for int, see mysql integer types.
-            if bigint_check(val):
-                self.tables['preprocess_wu'][key] = 'BIGINT'
-            else:
-                self.tables['preprocess_wu'][key] = 'INT'
+            self.tables['preprocess_wu'][key] = self.type_dict[val]
+
         for key in self.madx_output.values():
             self.tables['preprocess_task'][key] = 'MEDIUMBLOB'
 
