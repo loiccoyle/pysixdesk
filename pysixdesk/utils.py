@@ -65,8 +65,10 @@ def replace(patterns, replacements, source, dest):
     '''Reads a source file and writes the destination file.
     In each line, replaces patterns with repleacements.
 
-    Performance can be improved by compiling the regex prior to
-    the looping.
+    TODO: maybe it's best to return the the lines and not write the file,
+    so that more parsing can happen in memory without reopening and writing files.
+    Also might be best to take as input the contents itself for the same
+    reason.
     '''
     if not os.path.isfile(source):
         raise FileNotFoundError("The file %s doesn't exist!" % source)
@@ -77,31 +79,103 @@ def replace(patterns, replacements, source, dest):
     with open(dest, 'w') as fout:
         for line in fin_lines:
             for pat, rep in zip(patterns, replacements):
-                line = substitute(pat, rep, line)
+                if rep is not None:
+                    line = re.sub(f'{pat}', f'{rep}', line)
             fout.write(line)
 
 
-def substitute(pat, rep, line):
+def sandwich(in_file, out_file, path_prefix='', logger=None):
     '''
-    If a replacement pattern is provided, match with '%PAT={number}',
-    and replace with 'rep'.
-    If a replacement is not provided, match with '%PAT={number}' and
-    remove '%PAT='.
+    Looks for any patterns matching '^%FILE:.*' in in_file, then replaces the match
+    with the content of the file following the match.
+    A path prefix can be specified to look for matched file in another directory.
+    If the matched file is not found, comment out the pattern.
 
-    The idea is to give the user making the mask file the ability to leave in
-    default values, with the following syntax:
-        qx0 = %QX=62.28
-    (note the lack of space around the '=')
-    If a replacement is provided, then replace '%Qx=62.28' with the replacement,
-    otherwise, remove '%Qx='
+    Example:
+        contents of in_file:
+            aaaaaaaaa
+            %FILE:insert.txt
+            aaaaaaaaa
+
+        contents of insert.txt:
+            bbbbbbbbb
+            bbbbbbbbb
+
+        writes to out_file:
+            aaaaaaaaa
+            bbbbbbbbb
+            bbbbbbbbb
+            aaaaaaaaa
+
+    TODO: maybe it's best to return the the sandwiched lines and not write the file,
+    so that more parsing can happen in memory without reopening and writing files.
+    Also might be best to take as input the contents itself for the same
+    reason.
     '''
-    if rep is not None:
-        # replaces '%PAT= -1.23e12' with rep
-        rep_line = re.sub(fr'{pat}( *= *-?\d*\.?\d*((e|E)-?\d+)?|)', str(rep), line)
+
+    if logger is not None:
+        display = logger.warning
     else:
-        # replaces '%PAT ={number}' with ''
-        rep_line = re.sub(fr'{pat} *= *(?=(-?\d*\.?\d*((e|E)-?\d+)?))', '', line)
-    return rep_line
+        display = print
+
+    with open(in_file, 'r') as f:
+        in_lines = f.read()
+
+    reg = re.compile(r'^%FILE:.*', re.MULTILINE)
+    for m in re.finditer(reg, in_lines):
+        m_str = m.group()
+        try:
+            with open(os.path.join(path_prefix, m_str.split(':')[1].lstrip()), 'r') as f:
+                file_lines = f.read()
+            in_lines = re.sub(f'{m_str}', file_lines, in_lines)
+        except FileNotFoundError as e:
+            display(e)
+            display(f'Commenting out {m_str} for {out_file}')
+            in_lines = re.sub(f'{m_str}', f'/{m_str}', in_lines)
+
+    with open(out_file, 'w') as out:
+        out.write(in_lines)
+
+
+def comment_block(block, in_file, out_file, selection=None):
+    '''
+    Comments a fort.3 type block.
+    in_file: file to comment
+    block: str containing the title of the block to comment out
+    out_file: output file with comments
+    selection: integer or slice, a used to comment only a subselection of occurances,
+    if none provided, comment all occurances.
+
+    Example:
+    to comment out the first occurance of the BEAM block:
+        comment_block('fort.3', 'BEAM', fort.3.commented, selection=0)
+    to comment out all but the fist occurance of the BEAM block:
+        comment_block('fort.3', 'BEAM', fort.3.commented, selection=slice(1, None))
+
+    TODO: maybe it's best to return the the lines and not write the file,
+    so that more parsing can happen in memory without reopening and writing files.
+    Also might be best to take as input the contents itself for the same
+    reason.
+    '''
+    reg = fr"(?=^{block}).*?(?<=NEXT)"
+    with open(in_file, 'r') as f_in:
+        lines = f_in.read()
+
+    results = list(re.finditer(reg, lines, re.MULTILINE | re.DOTALL))
+    if selection is not None:
+        results = results[selection]
+        if not isinstance(results, list):
+            results = [results]
+
+    offset = 0
+    for i, m in enumerate(results):
+        matched_block = m.group()
+        commented, n_subs = re.subn('\n', '\n/', '/' + matched_block)
+        lines = ''.join([lines[:m.start() + offset], commented, lines[m.end() + offset:]])
+        offset += n_subs + 1
+
+    with open(out_file, 'w') as f_out:
+        f_out.write(lines)
 
 
 def encode_strings(inputs):

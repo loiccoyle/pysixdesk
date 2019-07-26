@@ -159,7 +159,7 @@ def madxjob(madx_config, mask_config):
     logger.info("MADX job is running...")
     output = os.popen(command)
     outputlines = output.readlines()
-    print(''.join(outputlines))
+    # print(''.join(outputlines))
     with open('madx_stdout', 'w') as mad_out:
         mad_out.writelines(outputlines)
     if 'finished normally' not in outputlines[-2]:
@@ -280,15 +280,11 @@ def sixtrackjob(config, config_re, jobname, **kwargs):
     for s in temp_files:
         dest = s + ".t1"
         source = os.path.join('../', s)
-
         try:
             utils.replace(patterns, values, source, dest)
         except Exception as e:
             logger.error("Failed to generate input file for oneturn sixtrack!")
             raise e
-        logger.info(f'▼▼▼▼▼▼▼▼▼▼▼▼▼ {source} diff ▼▼▼▼▼▼▼▼▼▼▼▼▼')
-        utils.diff(source, dest, logger=logger)
-        logger.info(f'▲▲▲▲▲▲▲▲▲▲▲▲▲ {source} diff ▲▲▲▲▲▲▲▲▲▲▲▲▲')
 
         output.append(dest)
     temp1 = input_files['fc.3']
@@ -298,12 +294,15 @@ def sixtrackjob(config, config_re, jobname, **kwargs):
     else:
         content = "The %s file doesn't exist!" % temp1
         raise FileNotFoundError(content)
+    print(f'input_files {input_files}')
+    print(f'temp files {temp_files}')
 
-    print(f'Concatenating {output}')
-    concatenate_files(output, 'fort.3')
-    with open('fort.3', 'r') as file:
-        lines = file.read()
-    print(lines)
+    utils.sandwich(dest, 'fort.3', path_prefix='../', logger=logger)
+    utils.comment_block('BEAM', 'fort.3', 'fort.3', selection=0)
+
+    logger.info(f'▼▼▼▼▼▼▼▼▼▼▼▼▼ {source} diff ▼▼▼▼▼▼▼▼▼▼▼▼▼')
+    utils.diff(source, 'fort.3', logger=logger)
+    logger.info(f'▲▲▲▲▲▲▲▲▲▲▲▲▲ {source} diff ▲▲▲▲▲▲▲▲▲▲▲▲▲')
 
     # prepare the other input files
     if os.path.isfile('../fort.2') and os.path.isfile('../fort.16'):
