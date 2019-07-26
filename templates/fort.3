@@ -30,7 +30,6 @@ SYNCHROTRON OSCILLATIONS--------'PLACE AFTER TRACKING PARAMETERS'-------
 NEXT
 BEAM
 %bunch_charge   %emit_beam  %emit_beam  %sigz  %sige  1  %ibtype 1 0
-
 NEXT
 ITERATION-ACCURACY------------------------------------------------------
        50 1D-12 1D-15
@@ -39,18 +38,32 @@ ITERATION-ACCURACY------------------------------------------------------
           1D-6  1D-9  1D-9
 NEXT
 
+%FILE:fort.3.mad
+
+LIMI
+LOAD ../fort.3.aper
+NEXT
+
+/ELEN
+/tlens.5l4.b1 UNIFORM 2.420e-03 1.54 0.77 0 0 3 -5 10 
+/          distrib   e kick    outerr innerr offx offy length current keV
+/          GAUSSIAN
+/          RADIAL 
+/NEXT
+
 FLUCTUATION
 100000 1 7 3
 NEXT
-%POSTPROCESSING----------------------------------------------------------
-%POS1LHC Dynamic Aperture at Injection Version 5 (1998)
-%POS120 0 0 1 .08 .08 1 0 0 1. 1.
-%POS1%inttunex %inttuney 1 1 10 .005 1 .050
-%POS10 1 0 1 1 1 1 1 %ndafi
-%POS1NEXT
-%DIFFERENTIAL ALGEBRA---------------------------------------------------
-%DIF1%NO  %NV 1E-38 %nsix 0
-%DIF1NEXT
+
+%toggle_post/POSTPROCESSING----------------------------------------------------------
+%toggle_post/LHC Dynamic Aperture at Injection Version 5 (1998)
+%toggle_post/20 0 0 1 .08 .08 1 0 0 1. 1.
+%toggle_post/%inttunex %inttuney 1 1 10 .005 1 .050
+%toggle_post/0 1 0 1 1 1 1 1 %ndafi
+%toggle_post/NEXT
+%toggle_diff/DIFFERENTIAL ALGEBRA---------------------------------------------------
+%toggle_diff/%NO  %NV 1E-38 %nsix 0
+%toggle_diff/NEXT
 
 ENDE====================================================================
 
