@@ -3,6 +3,7 @@ import sqlite3
 import pymysql
 import logging
 import collections
+from contextlib import closing
 from abc import ABC, abstractmethod
 
 
@@ -52,7 +53,7 @@ class DatabaseAdaptor(ABC):
             auto_keys = keys['autoincrement']
             for ky in auto_keys:
                 columns[ky] = columns[ky] + ' AUTO_INCREMENT'
-        col = [' '.join(map(str, i)) for i in columns.items()]
+        col = [f'`{k}` {v}' for k, v in columns.items()]
         col = [j.replace('.', '_') for j in col]
         cols = ','.join(map(str, col))
         fill = cols
@@ -78,7 +79,7 @@ class DatabaseAdaptor(ABC):
 
     def drop_table(self, table_name):
         '''Drop an exist table'''
-        with self.conn.cursor() as c:
+        with closing(self.conn.cursor()) as c:
             sql = 'DROP TABLE IF EXISTS %s' % table_name
             c.execute(sql)
         self.conn.commit()
@@ -94,11 +95,11 @@ class DatabaseAdaptor(ABC):
         sql = 'INSERT INTO %s (%s) VALUES (%s)'
         keys = list(values.keys())
         vals = [values[key] for key in keys]
-        keys = [i.replace('.', '_') for i in keys]
+        keys = [f"`{i.replace('.', '_')}`" for i in keys]
         cols = ','.join(keys)
         ques = ','.join((ph,) * len(keys))
         sql_cmd = sql % (table_name, cols, ques)
-        with self.conn.cursor() as c:
+        with closing(self.conn.cursor()) as c:
             c.execute(sql_cmd, vals)
         self.conn.commit()
 
@@ -118,7 +119,7 @@ class DatabaseAdaptor(ABC):
         ques = ','.join((ph,) * len(keys))
         sql_cmd = sql % (table_name, cols, ques)
         vals = list(zip(*vals))
-        with self.conn.cursor() as c:
+        with closing(self.conn.cursor()) as c:
             c.executemany(sql_cmd, vals)
         self.conn.commit()
 
@@ -133,7 +134,7 @@ class DatabaseAdaptor(ABC):
         if len(cols) == 0:
             return []
         if (isinstance(cols, collections.Iterable) and not isinstance(cols, str)):
-            cols = [i.replace('.', '_') for i in cols]
+            cols = [f"`{i.replace('.', '_')}`" for i in cols]
             cols = ','.join(cols)
         sql = 'SELECT %s FROM %s' % (cols, table_name)
         if 'DISTINCT' in kwargs.keys() and kwargs['DISTINCT']:
@@ -142,9 +143,9 @@ class DatabaseAdaptor(ABC):
             sql += ' WHERE %s' % where
         if orderby is not None:
             sql += ' ORDER BY %s'(','.join(orderby))
-        with self.conn.cursor() as c:
+        with closing(self.conn.cursor()) as c:
             c.execute(sql)
-        data = list(c)
+            data = c.fetchall()
         return data
 
     def update(self, table_name, values, ph, where=None):
@@ -167,7 +168,7 @@ class DatabaseAdaptor(ABC):
         if where is not None:
             sql = sql + 'WHERE ' + where
         sql_cmd = sql % (table_name, sets)
-        with self.conn.cursor() as c:
+        with closing(self.conn.cursor()) as c:
             c.execute(sql_cmd, vals)
         self.conn.commit()
 
@@ -177,15 +178,18 @@ class DatabaseAdaptor(ABC):
         @where(str) Selection condition which is mandatory here!
         '''
         sql = 'DELETE FROM %s WHERE %s' % (table_name, where)
-        with self.conn.cursor() as c:
+        with closing(self.conn.cursor()) as c:
             c.execute(sql)
         self.conn.commit()
 
     def close(self):
         '''Disconnect the database, if a connection is active'''
-        if self.conn is not None and self.conn.open:
-            self.conn.commit()
-            self.conn.close()
+        if self.conn is not None:
+            try:
+                self.conn.commit()
+                self.conn.close()
+            except Exception:
+                pass
 
     def __del__(self):
         '''Disconnect before deletion'''
@@ -225,13 +229,13 @@ class SQLDatabaseAdaptor(DatabaseAdaptor):
 
     def setting(self, settings):
         '''Execute the settings of the database via pragma command'''
-        with self.conn.cursor() as c:
+        with closing(self.conn.cursor()) as c:
             for key, value in settings.items():
                 sql = 'PRAGMA %s=%s' % (key, str(value))
                 c.execute(sql)
         self.conn.commit()
 
-    def create_table(self, name, columns, keys, recreate):
+    def create_table(self, name, columns, keys={}, recreate=False):
         '''Create a new table'''
         if 'autoincrement' in keys.keys():
             auto_keys = keys.pop('autoincrement')
@@ -244,8 +248,8 @@ class SQLDatabaseAdaptor(DatabaseAdaptor):
 
     def fetch_tables(self):
         '''Fetch all the table names in the database'''
-        with self.conn.cursor() as c:
-            out = c.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        with closing(self.conn.cursor()) as c:
+            out = c.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
         return list(out)
 
     def insert(self, table_name, values):
@@ -328,7 +332,7 @@ class MySQLDatabaseAdaptor(DatabaseAdaptor):
     def setting(self, settings):
         pass
 
-    def create_table(self, name, columns, keys, recreate):
+    def create_table(self, name, columns, keys={}, recreate=False):
         '''Create a new table'''
         super(MySQLDatabaseAdaptor, self).create_table(name, columns, keys, recreate)
 
