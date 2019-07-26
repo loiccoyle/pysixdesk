@@ -129,12 +129,12 @@ call,file="slhc/errors/install_MCBXAB_errors.madx";    ! adding multipole correc
 !********************************************
 
 !NRJ= 450.0  ; ! injection
-NRJ= %NRJ=7000.0 ; ! collision
+NRJ= %e0 ; ! collision
 
 ! A Laundau octupole current 20A inj, -570A col
 !I_MO=0;
 !I_MO=-20;
-I_MO= %IOCT=-300;
+I_MO= %IOCT;
 !I_MO=-570;
 
 !General switch to select collision (0/1)
@@ -143,29 +143,33 @@ ON_COLLISION:=1;
 ON_BB_SWITCH:=1;
 
 b_t_dist := %B_SEP=25.;  !bunch separation [ns]
-if (not_a_mask==1){ emittance_norm := %EMIT_BEAM=2.5e-6; Nb_0 := %N_PART=2.2E11; } else { emittance_norm := %EMIT_NORM=2.5e-6; Nb_0 := %N_PART=2.2E11; };
+if (not_a_mask==1){
+  emittance_norm := %emit_beam *1.0e-6; Nb_0 := %bunch_charge;
+} else {
+  emittance_norm := %emit_beam *1.0e-6; Nb_0 := %bunch_charge; 
+};
 
-sigt_col= %SIG_T_COL=0.075; ! bunch length [m] in collision
-sige_col= %SIG_E_COL=1.1e-4
+sigt_col= %sigz; ! bunch length [m] in collision
+sige_col= %sige;
 
-sigt_inj= %SIG_T_INJ=0.130;
-sige_inj= %SIG_E_INJ=4.5e-4
+sigt_inj= %sigz;
+sige_inj= %sige;
 
-gamma_rel      := NRJ/pmass;
+gamma_rel := NRJ/pmass;
 epsx:=emittance_norm /gamma_rel;
 epsy:=emittance_norm /gamma_rel;
 
 !********************************************
 
-tsplit= %Q_SPLIT=2.0;   !new tune split
-qx00  = %QX_INT=62.0;  !integer h tune
-qy00  = %QY_INT=60.0;  !integer v tune
+qx00  = %inttunex;  !integer h tune
+qy00  = %inttuney;  !integer v tune
+tsplit= qx00 - qy00;   !new tune split
 
 
 if (NRJ<4999.9999){
   !Inj. optics in thin lens
   call,file="slhc/opt_inj_thin.madx";  ! beta* [m]=6/10/6/10 in IR1/2/5/8
-  qx0 = %QX_INJ=62.28;   qy0 = %Q0_INJ=60.31;  qprime = %QP_INJ=3.0;
+  qx0 = %tunex;   qy0 = %tuney;  qprimex = %chromx; qprimey = %chromy;
   if (mylhcbeam<3){
     Beam,particle=proton, sequence=lhcb1, energy=NRJ, sigt=sigt_inj, bv=1, NPART=Nb_0, sige=sige_inj, ex=epsx, ey=epsy;
   };
@@ -176,7 +180,7 @@ if (NRJ>5000.0000){
   call,file="slhc/squeeze2/opt_150_150_150_150_thin.madx";
   !call,file="slhc/squeeze2/opt_200_200_200_200_thin.madx";
   !call,file="slhc/squeeze2/opt_squeeze_640_3000_thin.madx";
-  qx0 = %QX_COL=62.31;   qy0 = %QY_COL=60.32;  qprime = %QP_COL=3.0;
+  qx0 = %tunex;   qy0 = %tuney;  qprimex = %chromx;  qprimey = %chromy;
   ON_QPP     :=0;  ! Correction of residual Q'' by MO's
   ON_DISP    :=1;  ! Correction of spurious dispersion
   if (mylhcbeam<3){
@@ -278,9 +282,9 @@ value,mux_ip15_ref,muy_ip15_ref;
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++;
 !Set crossing angle and separations knobs
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++;
-phi_IR1 = %PHI_IR1=90.000; phi_IR5 =   %PHI_IR5=0.000; ! For round and flat optics
+phi_IR1 = %PHI_IR1; phi_IR5 = %PHI_IR5; ! For round and flat optics
 !phi_IR1 =    0.000; phi_IR5 =   90.000; ! For flathv optics
-if (not_a_mask==1){ xing15= %XING=255; } else { xing15= %XING=255; };
+if (not_a_mask==1){ xing15= %XING; } else { xing15= %XING; };
 sep15=0.75;
 xing8=-250; sep8=-2; on_lhcb=+1;
 xing2= 170; sep2=2; on_alice=1;
@@ -907,14 +911,14 @@ if(mylhcbeam>1){
  endmatch;
 
  match,chrom;
- global, dq1=qprime, dq2=qprime;
+ global, dq1=qprimex, dq2=qprimey;
  vary,   name=ksf;
  vary,   name=ksd;
  lmdif,  calls=100, tolerance=1.0E-21;
  endmatch;
 
  match,chrom;
- global, dq1=qprime, dq2=qprime;
+ global, dq1=qprimex, dq2=qprimey;
  global, q1=qx0, q2=qy0;
  vary,   name=ksf;
  vary,   name=ksd;
@@ -946,8 +950,8 @@ twiss;
  sixtrack, radius=0.017;
 */
 
-if (NRJ<4999.9999) {VRF400:= %RF_VOL_INJ=8. ;LAGRF400.B1=0.5;LAGRF400.B2=0.;};
-if (NRJ>5000.0000) {VRF400:= %RF_VOL_COL=16.;LAGRF400.B1=0.5;LAGRF400.B2=0.;};
+if (NRJ<4999.9999) {VRF400:= %rfvol ;LAGRF400.B1=0.5;LAGRF400.B2=0.;};
+if (NRJ>5000.0000) {VRF400:= %rfvol ;LAGRF400.B1=0.5;LAGRF400.B2=0.;};
 twiss;
 xnom1=table(twiss,IP1,x);pxnom1=table(twiss,IP1,px);ynom1=table(twiss,IP1,y);pynom1=table(twiss,IP1,py);
 xnom2=table(twiss,IP2,x);pxnom2=table(twiss,IP2,px);ynom2=table(twiss,IP2,y);pynom2=table(twiss,IP2,py);
@@ -982,5 +986,5 @@ if (not_a_mask==1){
   twiss,file="last_twiss.%SEEDRAN";
   System,"gzip -f last_twiss.%SEEDRAN";
 };
-system, "sed -i 's/tlens.5l4.b1       0/tlens.5l4.b1     29/' fc.2"
+!system, "sed -i 's/tlens.5l4.b1       0/tlens.5l4.b1     29/' fc.2";
 stop;
