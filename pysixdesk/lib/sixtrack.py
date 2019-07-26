@@ -9,10 +9,9 @@ import zipfile
 import configparser
 from subprocess import Popen, PIPE
 
-# this is still quite a hacky solution
-from pysixdesk.pysixdb import SixDB
-from pysixdesk import utils
-from pysixdesk.resultparser import parse_sixtrack
+from pysixdesk.lib.pysixdb import SixDB
+from pysixdesk.lib import utils
+from pysixdesk.lib.resultparser import parse_sixtrack
 
 
 def run(wu_id, input_info):
@@ -68,7 +67,7 @@ def run(wu_id, input_info):
         boinc_work = ''
         boinc_results = ''
         surv_percent = 1
-        logger.error("There isn't valid boinc path to submit this job!")
+        logger.error("There isn't a valid boinc path to submit this job!")
     else:
         boinc_work = boinc_infos[0][0]
         boinc_results = boinc_infos[0][1]
@@ -85,7 +84,6 @@ def run(wu_id, input_info):
         sixtrackjob(sixtrack_config, fort3_config, boinc_vars)
     except Exception as e:
         logger.error(e)
-        pass
 
     if dbtype.lower() == 'sql':
         dest_path = sixtrack_config["dest_path"]
@@ -97,17 +95,18 @@ def run(wu_id, input_info):
     output_files = utils.evlt(utils.decode_strings, [inp])
     down_list = list(output_files)
     down_list.append('fort.3')
-    status = utils.download_output(down_list, dest_path)
-    if status:
-        logger.info("All requested results have been stored in %s" % dest_path)
-    else:
-        logger.error("Job failed!")
 
-    if boinc.lower() == 'true' and status:
-        down_list = ['fort.3']
-        dest_path = sixtrack_config["dest_path"]
+    try:
         utils.download_output(down_list, dest_path)
-        return
+        logger.info("All requested results have been stored in %s" % dest_path)
+    except Exception:
+        logger.error("Job failed!", exc_info=True)
+    else:
+        if boinc.lower() == 'true':
+            down_list = ['fort.3']
+            dest_path = sixtrack_config["dest_path"]
+            utils.download_output(down_list, dest_path)
+            return
 
     if dbtype.lower() == 'sql':
         return
@@ -175,8 +174,8 @@ def sixtrackjob(sixtrack_config, config_param, boinc_vars):
         else:
             raise FileNotFoundError("The required file %s isn't found!" % infile)
 
-    fc3aux = open('fort.3.aux', 'r')
-    fc3aux_lines = fc3aux.readlines()
+    with open('fort.3.aux', 'r') as fc3aux:
+        fc3aux_lines = fc3aux.readlines()
     fc3aux_2 = fc3aux_lines[1]
     c = fc3aux_2.split()
     lhc_length = c[4]
@@ -321,9 +320,9 @@ def check_tracking(filename, surv_percent=1):
     with open(filename, 'r') as f_in:
         lines = f_in.readlines()
     try:
-        track_lines = filter(lambda x: re.search('TRACKING>', x), lines)
+        track_lines = filter(lambda x: re.search(r'TRACKING>', x), lines)
         last_line = list(track_lines)[-1]
-        info = re.split(':|,', last_line)
+        info = re.split(r':|,', last_line)
         turn_info = info[1].split()
         part_info = info[-1].split()
         total_turn = ast.literal_eval(turn_info[-1])
@@ -338,7 +337,7 @@ def check_tracking(filename, surv_percent=1):
             else:
                 return 1
     except Exception as e:
-        print(e)
+        logger.error(e)
         return 0
 
 

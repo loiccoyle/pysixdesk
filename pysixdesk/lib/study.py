@@ -8,6 +8,7 @@ import getpass
 import itertools
 import collections
 import configparser
+# from importlib.machinery import SourceFileLoader
 
 from . import dbtypedict
 from . import utils
@@ -85,13 +86,17 @@ class Study(object):
     @cluster_class.setter
     def cluster_class(self, value):
         '''
-        if user sets his own cluster_class, cluster_module and cluster_name update
+        if user sets his own cluster_class, cluster_module and cluster_name
+        update
         '''
         self._cluster_class = value
-        self._cluster_name = self._cluster_class.__name__      # returns 'HTCondor'
-        self._cluster_module = self._cluster_class.__module__  # returns 'pysixtrack.submission'
+        self._cluster_name = self._cluster_class.__name__
+        # returns 'HTCondor'
+        self._cluster_module = self._cluster_class.__module__
+        # returns 'pysixtrack.submission'
 
-    # the user cannot change these without going through the cluster_class setter
+    # the user cannot change these without going through the cluster_class
+    # setter
     # it might be best to leave these as hidden attributes?
     @property
     def cluster_name(self):
@@ -302,7 +307,7 @@ class Study(object):
             'count_changes': 'off'}
 
         self.tables['boinc_vars'] = collections.OrderedDict()
-        self.boinc_vars['workunitName'] = 'sixdesk'
+        self.boinc_vars['workunitName'] = 'pysixdesk'
         self.boinc_vars['fpopsEstimate'] = 30 * 2 * 10e5 / 2 * 10e6 * 6
         self.boinc_vars['fpopsBound'] = self.boinc_vars['fpopsEstimate'] * 1000
         self.boinc_vars['memBound'] = 100000000
@@ -630,7 +635,7 @@ class Study(object):
         0: print madx, oneturn sixtrack job
         1: print sixtrack job
         2: print madx, oneturn sixtrack and sixtrack jobs
-        where: the filter condition for database query, e.g. "status='complete'" '''
+        where: the filter condition for database query, e.g. "status='complete'"'''
         query = ['wu_id', 'job_name', 'status', 'unique_id']
         if job == 0 or job == 2:
             wus = self.db.select('preprocess_wu', query, where)
@@ -651,18 +656,12 @@ class Study(object):
         @trials The maximum number of trials of submission'''
         if typ == 0:
             input_path = self.paths['preprocess_in']
-            # output_path = self.paths['preprocess_out']
-            # exe = os.path.join(utils.PYSIXDESK_ABSPATH, 'pysixdesk', 'preprocess.py')
             jobname = 'preprocess'
             table_name = 'preprocess_wu'
-            # task_table_name = 'preprocess_task'
         elif typ == 1:
             input_path = self.paths['sixtrack_in']
-            # output_path = self.paths['sixtrack_out']
-            # exe = os.path.join(utils.PYSIXDESK_ABSPATH, 'pysixdesk', 'sixtrack.py')
             jobname = 'sixtrack'
             table_name = 'sixtrack_wu'
-            # task_table_name = 'sixtrack_task'
         else:
             content = ("Unknown job type %s, must be either 0 "
                        "(preprocess job) or 1 (tracking job)") % typ
@@ -724,7 +723,7 @@ class Study(object):
             raise ValueError(content)
 
         in_path = os.path.join(self.paths['gather'], str(typ))
-        out_path = in_path
+        # out_path = in_path
         if not os.path.isdir(in_path):
             os.makedirs(in_path)
         with open(task_input, 'w') as f_out:
@@ -867,7 +866,7 @@ class Study(object):
         tran_input.append(input_info)
         in_path = self.paths['sixtrack_in']
         out_path = self.paths['sixtrack_out']
-        exe = os.path.join(utils.PYSIXDESK_ABSPATH, 'pysixdesk', 'sixtrack.py')
+        exe = os.path.join(utils.PYSIXDESK_ABSPATH, 'pysixdesk/lib', 'sixtrack.py')
         self.submission.prepare(wu_ids, tran_input, exe, 'db.ini', in_path,
                                 out_path, *args, **kwargs)
 
@@ -928,7 +927,7 @@ class Study(object):
         trans.append(input_info)
         in_path = self.paths['preprocess_in']
         out_path = self.paths['preprocess_out']
-        exe = os.path.join(utils.PYSIXDESK_ABSPATH, 'pysixdesk', 'preprocess.py')
+        exe = os.path.join(utils.PYSIXDESK_ABSPATH, 'pysixdesk/lib', 'preprocess.py')
         self.submission.prepare(wu_ids, trans, exe, 'db.ini', in_path,
                                 out_path, *args, **kwargs)
 

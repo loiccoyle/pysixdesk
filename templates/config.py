@@ -2,16 +2,29 @@
 This is a template file of preparing parameters for madx and sixtracking jobs.
 '''
 import os
-import ast
 import copy
 from functools import partial
+import logging
 
-# need to check if this import works properly
-from pysixdesk import submission
+from pysixdesk.lib import submission
 from pysixdesk import Study
 from math import sqrt, pi, sin, cos
-from pysixdesk.machineparams import MachineConfig
-from pysixdesk.study_params import StudyParams
+
+from pysixdesk.lib.study_params import StudyParams
+from pysixdesk.lib.machineparams import MachineConfig
+
+# logger configuration
+logger = logging.getLogger('pysixdesk')
+logger.setLevel(logging.INFO)
+
+# To add logging to file, do:
+# -----------------------------------------------------------------------------
+# filehandler = logging.FileHandler(log_path)
+# filehandler.setFormatter(logging.Formatter(format='%(asctime)s %(name)s %(levelname)s: %(message)s',
+#                                            datefmt='%H:%M:%S'))
+# filehandler.setLevel(logging.DEBUG)
+# logger.addHandler(filehandler)
+# -----------------------------------------------------------------------------
 
 
 class MyStudy(Study):

@@ -12,7 +12,7 @@ class Cluster(ABC):
 
     def __init__(self, temp_path):
         '''Constructor'''
-        pass
+        self._logger = logging.getLogger(__name__)
 
     @abstractmethod
     def prepare(self, wu_ids, trans, exe, exe_args, input_path, output_path,
@@ -37,7 +37,7 @@ class HTCondor(Cluster):
 
     def __init__(self, temp_path=None):
         '''Constructor'''
-        self._logger = logging.getLogger(__name__)
+        super().__init__(temp_path)
         self.temp = temp_path
         self.sub_name = 'htcondor_run.sub'
 
@@ -64,11 +64,11 @@ class HTCondor(Cluster):
                     shutil.rmtree(out_f)
                 os.makedirs(out_f)
         os.chmod(job_list, 0o444)  # change the permission to readonly
+        # trans.append(os.path.join(utils.PYSIXDESK_ABSPATH, 'pysixdesk/lib', 'resultparser.py'))
+        # trans.append(os.path.join(utils.PYSIXDESK_ABSPATH, 'pysixdesk/lib', 'utils.py'))
+        # trans.append(os.path.join(utils.PYSIXDESK_ABSPATH, 'pysixdesk/lib', 'pysixdb.py'))
+        # trans.append(os.path.join(utils.PYSIXDESK_ABSPATH, 'pysixdesk/lib', 'dbadaptor.py'))
         rep = {}
-        trans.append(os.path.join(utils.PYSIXDESK_ABSPATH, 'pysixdesk', 'resultparser.py'))
-        trans.append(os.path.join(utils.PYSIXDESK_ABSPATH, 'pysixdesk', 'utils.py'))
-        trans.append(os.path.join(utils.PYSIXDESK_ABSPATH, 'pysixdesk', 'pysixdb.py'))
-        trans.append(os.path.join(utils.PYSIXDESK_ABSPATH, 'pysixdesk', 'dbadaptor.py'))
         rep['%func'] = utils.evlt(utils.encode_strings, [trans])
         rep['%exe'] = exe
         rep['%dirname'] = output_path

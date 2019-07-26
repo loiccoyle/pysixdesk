@@ -6,9 +6,9 @@ import copy
 import shutil
 import configparser
 
-from pysixdesk import utils
-from pysixdesk.pysixdb import SixDB
-from pysixdesk.resultparser import parse_preprocess
+from pysixdesk.lib import utils
+from pysixdesk.lib.pysixdb import SixDB
+from pysixdesk.lib.resultparser import parse_preprocess
 
 
 def run(wu_id, input_info):
@@ -43,9 +43,12 @@ def run(wu_id, input_info):
         if dbtype.lower() == 'sql':
             raise e
     else:
-        sixtrack_config = cf['sixtrack']
-        fort3_config = cf._sections['fort3']
-        sixtrackjobs(sixtrack_config, fort3_config)
+        try:
+            sixtrack_config = cf['sixtrack']
+            fort3_config = cf._sections['fort3']
+            sixtrackjobs(sixtrack_config, fort3_config)
+        except Exception as e:
+            logger.error(e)
 
     if dbtype.lower() == 'mysql':
         dest_path = './result'
@@ -62,12 +65,13 @@ def run(wu_id, input_info):
     down_list.append('madx_in')
     down_list.append('madx_stdout')
     down_list.append('oneturnresult')
-    status = utils.download_output(down_list, dest_path)
 
-    if status:
+    try:
+        utils.download_output(down_list, dest_path)
         logger.info("All requested results have been stored in %s" % dest_path)
-    else:
-        logger.error("Job failed!")
+    except Exception:
+        logger.warning("Job failed!", exc_info=True)
+
     if dbtype.lower() == 'sql':
         return
 
@@ -205,13 +209,12 @@ def sixtrackjobs(config, fort3_config):
 
     # Calculate and write out the requested values
     chrom_eps = fort3_config['chrom_eps']
-    first = open('fort.10_first_oneturn')
-    a = first.readline()
-    valf = a.split()
-    first.close()
-    second = open('fort.10_second_oneturn')
-    b = second.readline()
-    vals = b.split()
+    with open('fort.10_first_oneturn', 'r') as first:
+        a = first.readline()
+        valf = a.split()
+    with open('fort.10_second_oneturn', 'r') as second:
+        b = second.readline()
+        vals = b.split()
     tunes = [chrom_eps, valf[2], valf[3], vals[2], vals[3]]
     chrom1 = (float(vals[2]) - float(valf[2])) / float(chrom_eps)
     chrom2 = (float(vals[3]) - float(valf[3])) / float(chrom_eps)
@@ -365,5 +368,5 @@ if __name__ == '__main__':
         run(wu_id, db_name)
         sys.exit(0)
     else:
-        logger.error("To many input arguments!")
+        logger.error("Too many input arguments!")
         sys.exit(1)

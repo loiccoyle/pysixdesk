@@ -9,7 +9,7 @@ import difflib
 import traceback
 
 # Gobal variables
-PYSIXDESK_ABSPATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PYSIXDESK_ABSPATH = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 def check(files):
@@ -42,11 +42,12 @@ def download_output(filenames, dest, zp=True):
     '''Download the requested files to the given destinaion.
     If zp is true, then zip the files before download.
     '''
-    status = False
     if not os.path.isdir(dest):
         os.makedirs(dest, 0o755)
 
     for filename in filenames:
+        if not os.path.isfile(filename):
+            raise FileNotFoundError("The file %s doesn't exist, download failed!" % filename)
         if os.path.isfile(filename):
             if zp:
                 out_name = os.path.join(dest, filename + '.gz')
@@ -54,11 +55,6 @@ def download_output(filenames, dest, zp=True):
                     shutil.copyfileobj(f_in, f_out)
             else:
                 shutil.copy(filename, dest)
-        else:
-            print("The file %s doesn't exist, download failed!" % filename)
-            return status
-    status = True
-    return status
 
 
 def replace(patterns, replacements, source, dest):
