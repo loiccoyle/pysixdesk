@@ -92,7 +92,7 @@ class DatabaseAdaptor(ABC):
         sql = 'INSERT INTO %s (%s) VALUES (%s)'
         keys = list(values.keys())
         vals = [values[key] for key in keys]
-        keys = [i.replace('.', '_') for i in keys]
+        keys = [f"`{i.replace('.', '_')}`" for i in keys]
         cols = ','.join(keys)
         ques = ','.join((ph,) * len(keys))
         sql_cmd = sql % (table_name, cols, ques)
@@ -115,7 +115,7 @@ class DatabaseAdaptor(ABC):
             return []
         if (isinstance(cols, collections.Iterable) and not isinstance(cols,
                                                                       str)):
-            cols = [i.replace('.', '_') for i in cols]
+            cols = [f"`{i.replace('.', '_')}`" for i in cols]
             cols = ','.join(cols)
         sql = 'SELECT %s FROM %s' % (cols, table_name)
         if 'DISTINCT' in kwargs.keys() and kwargs['DISTINCT']:
@@ -143,7 +143,7 @@ class DatabaseAdaptor(ABC):
         sql = 'UPDATE %s SET %s '
         keys = values.keys()
         vals = [values[key] for key in keys]
-        keys = [i.replace('.', '_') for i in keys]
+        keys = [f"`{i.replace('.', '_')}`" for i in keys]
         ques = (ph,) * len(keys)
         sets = ['='.join(it) for it in zip(keys, ques)]
         sets = ','.join(sets)
