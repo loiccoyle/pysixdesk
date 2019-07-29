@@ -718,8 +718,10 @@ class Study(object):
         else:
             where = "status='incomplete' and preprocess_id in %s" % str(
                 preprocess_outs[0])
-        outputs = self.db.select('sixtrack_wu', ['wu_id', 'preprocess_id',
-                                                 'input_file', 'job_name'], where)
+        outputs = self.db.select('sixtrack_wu',
+                                 ['wu_id', 'preprocess_id',
+                                  'input_file', 'job_name'],
+                                 where)
         if not outputs:
             content = "There isn't available sixtrack job to submit!"
             self._logger.info(content)

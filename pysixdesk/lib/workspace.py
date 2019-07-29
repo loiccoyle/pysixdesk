@@ -198,8 +198,8 @@ class WorkSpace(object):
         else:
             input_study_name = study_name
         if study_name not in self.studies:
-            content = ("Study %s not present in workspace %s. "
-                       "Please create one with the init_study()") % (study_name, self.paths['workspace'])
+            content = ("Study {st} not present in workspace {ws}. "
+                       "Please create one with the init_study('{st}')").format(st=study_name, ws=self.paths['workspace'])
             raise FileNotFoundError(content)
 
         # other sanity checks:
