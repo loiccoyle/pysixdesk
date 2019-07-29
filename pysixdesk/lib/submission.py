@@ -42,7 +42,7 @@ class HTCondor(Cluster):
         self.sub_name = 'htcondor_run.sub'
 
     def prepare(self, wu_ids, trans, exe, exe_args, input_path, output_path,
-                *args, **kwargs):
+                flavour='tomorrow', *args, **kwargs):
         '''Prepare the submission file
         @wu_ids(tuple) The job ids for submission
         @trans(list) The python modules needed by the executables
@@ -50,6 +50,7 @@ class HTCondor(Cluster):
         @exe_args(str) The additional arguments for executable except for wu_id
         @input_path(str) The folder with input files
         @output_path(str) The output folder
+        @flavour(str) the jobFlavour, i.e. 'expresso',  'tomorrow', ...
         @*args and **kwargs Other necessary arguments'''
 
         job_list = os.path.join(input_path, 'job_id.list')
@@ -64,16 +65,13 @@ class HTCondor(Cluster):
                     shutil.rmtree(out_f)
                 os.makedirs(out_f)
         os.chmod(job_list, 0o444)  # change the permission to readonly
-        # trans.append(os.path.join(utils.PYSIXDESK_ABSPATH, 'pysixdesk/lib', 'resultparser.py'))
-        # trans.append(os.path.join(utils.PYSIXDESK_ABSPATH, 'pysixdesk/lib', 'utils.py'))
-        # trans.append(os.path.join(utils.PYSIXDESK_ABSPATH, 'pysixdesk/lib', 'pysixdb.py'))
-        # trans.append(os.path.join(utils.PYSIXDESK_ABSPATH, 'pysixdesk/lib', 'dbadaptor.py'))
         rep = {}
         rep['%func'] = utils.evlt(utils.encode_strings, [trans])
         rep['%exe'] = exe
         rep['%dirname'] = output_path
         rep['%joblist'] = job_list
         rep['%input'] = exe_args
+        rep['%flavour'] = flavour
         if self.temp is None:
             self.temp = os.path.basename(input_path)
         sub_temp = os.path.join(self.temp, self.sub_name)

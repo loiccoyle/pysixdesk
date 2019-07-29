@@ -921,7 +921,8 @@ class Study(object):
         out_path = self.paths['preprocess_out']
         exe = os.path.join(utils.PYSIXDESK_ABSPATH, 'pysixdesk/lib', 'preprocess.py')
         self.submission.prepare(wu_ids, trans, exe, 'db.ini', in_path,
-                                out_path, *args, **kwargs)
+                                out_path, job_flavour='expresso', *args,
+                                **kwargs)
 
     def pre_calc(self, **kwargs):
         '''Further calculations for the specified parameters'''
