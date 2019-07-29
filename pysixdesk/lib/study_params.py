@@ -7,43 +7,13 @@ from .constants import PROTON_MASS
 from .utils import PYSIXDESK_ABSPATH
 
 
-class FixedDict(OrderedDict):
-    '''
-    OrderedDict but with locking mechanism which stops user from entering new
-    keys
-    '''
-
-    def __init__(self, *args, **kwargs):
-        self._locked = False
-        super().__init__(*args, **kwargs)
-        self._locked = True
-
-    def lock(self):
-        self._locked = True
-
-    def unlock(self):
-        self._locked = False
-
-    def __setitem__(self, key, value):
-        if self._locked:
-            if key in self.keys():
-                super().__setitem__(key, value)
-            else:
-                raise ValueError(f'Dictionnary locked, cannot add "{key}" key.')
-        else:
-            super().__setitem__(key, value)
-
-
 class StudyParams:
     '''
     Looks for any placeholders in the provided paths and extracts the
     placeholder if no default values found, use None.
-    Unifies all the placeholders in self.placeholders, the user can edit it's
-    values, but not it's keys. This implements the __setitem__ and __getitem__
+    This implements the __setitem__ and __getitem__
     so the user can interact with the StudyParams object similarly to a dict.
 
-    The placeholders are split up again, into oneturn, sixtrack and
-    and mask dicts for use in pysixdesk.
     To get the placeholder patterns for the mask file use self.madx_params.
     To get the placeholder patterns for the oneturn sixtrack job use
     self.oneturn_params.
@@ -52,6 +22,11 @@ class StudyParams:
     '''
 
     def __init__(self, mask_path, fort_path=f'{PYSIXDESK_ABSPATH}/templates/fort.3'):
+        """
+        Args:
+            mask_path (str): path to the mask file
+            fort_path (str): path to the fort file
+        """
         self._logger = logging.getLogger(__name__)
         # comment regexp
         self._reg_comment = re.compile(r'^(\s?!|\s?/).*', re.MULTILINE)
@@ -92,6 +67,7 @@ class StudyParams:
                              ("Runnam", 'FirstTurn'),
                              ("rfvol", 16),
                              ("ratios", 1),
+                             ("SEEDRAN", 1),
                              ("tunex", 62.28),
                              ("tuney", 60.31),
                              ("toggle_post/", '/'),
@@ -107,12 +83,32 @@ class StudyParams:
                                       ('kmax', 5),
                                       ])
 
-        self.madx_params = FixedDict(**self.find_patterns(self.mask_path))
-        self.sixtrack_params = FixedDict(**self.find_patterns(self.fort_path))
+        self.madx_params = self.find_patterns(self.mask_path)
+        self.sixtrack_params = self.find_patterns(self.fort_path)
+
+    @property
+    def oneturn_params(self):
+        sixtrack = self.sixtrack_params.copy()
+        sixtrack['turnss'] = 1
+        sixtrack['nss'] = 1
+        sixtrack['Runnam'] = 'FirstTurn'
+        return sixtrack
+
+    @property
+    def unified_keys(self):
+        return (list(self.madx_params.keys()) +
+                list(self.sixtrack_params.keys()) +
+                list(self.phasespace_params.keys()))
 
     def extract_patterns(self, file):
         '''
         Extracts the patterns from a file.
+
+        Args:
+            file (str): path to the file from which to extract the placeholder
+            patterns.
+        Returns:
+            list: list containing the matches
         '''
         with open(file) as f:
             lines = f.read()
@@ -120,13 +116,21 @@ class StudyParams:
         matches = re.findall(self._reg, lines_no_comments)
         return matches
 
-    def find_patterns(self, file_path, folder=False):
+    def find_patterns(self, file_path, folder=False, keep_none=False):
         '''
-        Reads file_path and populates a dict with the matched patterns and
-        values
+        Reads file at `file_path` and populates a dict with the matched
+        patterns and values taken from `self.defaults`.
 
-        :param folder: if True, check also the files in the same folder as
-        the mask file for placeholder patterns.
+        Args:
+            file_path (str): path to file to extract placeholder patterns
+            folder (bool, optional): if True, check for placeholder patterns
+            in all files in the `file_path` fodler.
+            keep_none (bool, optional): if True, keeps the None entries in the
+            output dict.
+
+        Returns:
+            OrderedDict: dictionnary of the extracted placeholder patterns with
+            their values set the entry on `self.defaults`.
         '''
         dirname = os.path.dirname(file_path)
         if folder and dirname != '':
@@ -143,7 +147,7 @@ class StudyParams:
         for ph in matches:
             if ph in self.defaults.keys():
                 out[ph] = self.defaults[ph]
-            else:
+            elif keep_none:
                 out[ph] = None
 
         self._logger.debug(f'Found {len(matches)} placeholders.')
@@ -152,63 +156,77 @@ class StudyParams:
             self._logger.debug(f'{k}: {v}')
         return out
 
-    @property
-    def oneturn_params(self):
-        sixtrack = self.sixtrack_params.copy()
-        sixtrack['turnss'] = 1
-        sixtrack['nss'] = 1
-        sixtrack['Runnam'] = 'FirstTurn'
-        return sixtrack
-
     def add_calc(self, in_keys, out_key, fun):
         '''
         Add calculations to the calc queue. Any extra arguments of
         fun can be given in the *args/**kwargs of the self.calc call.
+
+        Args:
+            in_keys (list): keys to the input data of `fun`.
+            out_key (list): keys to place the output `fun` in
+            `self.sixtrack_params`. The `len(out_key)` must match the number of
+            outputs of `fun`.
+            fun (function): function to run, must take as input the values
+            given by the `in_keys` and outputs to the `out_key` in
+            `self.sitrack_params`. Can also have *args/**kwargs which will
+            passed to it when calling `self.calc`
         '''
-        if isinstance(in_keys, list):
-            self.calc_queue.append([in_keys, out_key, fun])
-        else:
-            self.calc_queue.append([[in_keys], out_key, fun])
+
+        self.calc_queue.append([in_keys, out_key, fun])
 
     def calc(self, *args, **kwargs):
         '''
-        Runs the queued calculations, in order.
-        *args and **kwargs are passed to the queued function
-        at run time.
+        Runs the queued calculations, in order. *args and **kwargs are passed
+        to the queued function at run time. The output of the queue is put
+        in `self.sixtrack_params`.
+
+        Args:
+            *args: passed to the `fun` in the queued calculations
+            **kwargs: passed to the `fun` in the queued calculations
+
+        Returns:
+            OrderedDict: `self.sixtrack_params` after running the calculation
+            queue
         '''
         for in_keys, out_key, fun in self.calc_queue:
             # get the input values with __getitem__
             inp = [self.__getitem__(k) for k in in_keys]
+            print(inp)
 
-            if isinstance(out_key, list):
-                out = fun(*inp, *args, **kwargs)
-                for i, k in enumerate(out_key):
-                    self.sixtrack_params[k] = out[i]
+            out = fun(*inp, *args, **kwargs)
+            for i, k in enumerate(out_key):
+                self.sixtrack_params[k] = out[i]
         return self.sixtrack_params
 
     def __repr__(self):
-        return '/n'.join([self.madx_params.__repr__(),
-                          self.sixtrack_params.__repr__(),
-                          self.phasespace_params.__repr__()])
+        '''
+        Unified __repr__ of the three dictionnaries.
+        '''
+        return '\n\n'.join(['Madx params: ' + self.madx_params.__repr__(),
+                            'SixTrack params: ' + self.sixtrack_params.__repr__(),
+                            'Phase space params: ' + self.phasespace_params.__repr__()])
 
     # set and get items like a dict
     def __setitem__(self, key, val):
         '''
-        Adds entry to the appropriate dictionnary.
+        Adds entry to the appropriate dictionnary(ies) which already contains
+        the key.
         '''
+        if key not in self.unified_keys:
+            raise KeyError(f'"{key}" not in extracted placeholders.')
         if key in self.phasespace_params.keys():
             self.phasespace_params[key] = val
         if key in self.madx_params.keys():
             self.madx_params[key] = val
         if key in self.sixtrack_params.keys():
             self.sixtrack_params[key] = val
-        else:
-            raise KeyError(f'"{key}" not in extracted placeholders.')
 
     def __getitem__(self, key):
         '''
-        Gets entry from the appropriate dictionnary.
+        Gets entry from the dictionnary which contains the key.
         '''
+        if key not in self.unified_keys:
+            raise KeyError(key)
         if key in self.phasespace_params.keys():
             return self.phasespace_params[key]
         if key in self.madx_params.keys():
@@ -228,4 +246,4 @@ class StudyParams:
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     test = StudyParams('../templates/lhc_aperture/hl13B1_elens_aper.mask')
-    print(test.placeholders)
+    print(test.params)

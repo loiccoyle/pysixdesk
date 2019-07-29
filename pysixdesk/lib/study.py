@@ -34,9 +34,6 @@ class Study(object):
         self.paths = {}
         self.env = {}
         self.params = None
-        self._madx_params = None
-        self._oneturn_sixtrack_params = None
-        self._sixtrack_params = None
         self.madx_input = {}
         self.madx_output = {}
         self.oneturn_sixtrack_input = {}
@@ -51,33 +48,6 @@ class Study(object):
         # initialize default values
         Study._defaults(self)
         Study._structure(self)
-
-    @property
-    def madx_params(self):
-        '''
-        loads the job's parameters at first call.
-        '''
-        if self._madx_params is None:
-            self._madx_params = self.params.madx_params
-        return self._madx_params
-
-    @property
-    def oneturn_sixtrack_params(self):
-        '''
-        loads the job's parameters at first call.
-        '''
-        if self._oneturn_sixtrack_params is None:
-            self._oneturn_sixtrack_params = self.params.oneturn_params
-        return self._oneturn_sixtrack_params
-
-    @property
-    def sixtrack_params(self):
-        '''
-        loads the job's parameters at first call.
-        '''
-        if self._sixtrack_params is None:
-            self._sixtrack_params = self.params.sixtrack_params
-        return self._sixtrack_params
 
     @property
     def cluster_class(self):
@@ -383,16 +353,16 @@ class Study(object):
             boinc_spool, self.st_pre, 'results')
         self.env['surv_percent'] = 1
 
-        for key, val in self.madx_params.items():
+        for key, val in self.params.madx_params.items():
             self.tables['preprocess_wu'][key] = self.type_dict[val]
 
         for key in self.madx_output.values():
             self.tables['preprocess_task'][key] = 'MEDIUMBLOB'
 
-        for key, val in self.oneturn_sixtrack_params.items():
+        for key, val in self.params.oneturn_params.items():
             self.tables['oneturn_sixtrack_wu'][key] = self.type_dict[val]
 
-        for key, val in self.sixtrack_params.items():
+        for key, val in self.params.sixtrack_params.items():
             self.tables['sixtrack_wu'][key] = self.type_dict[val]
         for key in self.sixtrack_output:
             self.tables['sixtrack_task'][key] = 'BLOB'
@@ -484,12 +454,12 @@ class Study(object):
         six_sec['input_files'] = utils.evlt(utils.encode_strings, [inp])
         inp = self.oneturn_sixtrack_output
         six_sec['output_files'] = utils.evlt(utils.encode_strings, [inp])
-        self.config['fort3'] = self.oneturn_sixtrack_params
+        self.config['fort3'] = self.params.oneturn_params
 
-        keys = list(self.madx_params.keys())
+        keys = list(self.params.madx_params.keys())
         values = []
         for key in keys:
-            val = self.madx_params[key]
+            val = self.params.madx_params[key]
             if not isinstance(val, collections.Iterable) or isinstance(val, str):
                 val = [val]  # wrap with list for a single element
             values.append(val)
@@ -552,7 +522,7 @@ class Study(object):
         six_sec['output_files'] = utils.evlt(utils.encode_strings, [inp])
         six_sec['test_turn'] = str(self.env['test_turn'])
 
-        madx_keys = list(self.madx_params.keys())
+        madx_keys = list(self.params.madx_params.keys())
         madx_vals = self.db.select('preprocess_wu', ['wu_id'] + madx_keys)
         if not madx_vals:
             content = "The preprocess_wu table is empty!"
@@ -561,10 +531,10 @@ class Study(object):
         madx_vals = list(zip(*madx_vals))
         madx_ids = list(madx_vals[0])
         madx_params = madx_vals[1:]
-        keys = list(self.sixtrack_params.keys())
+        keys = list(self.params.sixtrack_params.keys())
         values = []
         for key in keys:
-            val = self.sixtrack_params[key]
+            val = self.params.sixtrack_params[key]
             if not isinstance(val, collections.Iterable) or isinstance(val, str):
                 val = [val]  # wrap with list for a single element
             values.append(val)

@@ -59,10 +59,12 @@ class MyStudy(Study):
         self.params['Runnam'] = name
         self.params.update(machine_params)
 
+        # TODO: talk with Xiaohan to figure out how the angle/amplitude stuff
+        # works
         def calc_angle(kang, kmax):
             return kang / (kmax + 1)
 
-        self.params.add_calc(['kang', 'kmax'], 'angle', calc_angle)
+        self.params.add_calc(['kang', 'kmax'], ['angle'], calc_angle)
 
         def calc_amp(angle, emit, e0, pmass, amp, pre_id=None, db=self.db):
 
@@ -90,13 +92,9 @@ class MyStudy(Study):
             ax0t = factor * (sqrt(beta_x) + sqrt(beta_x * ratio) * cos(pi / 2 * angle))
             return [a * ax0t for a in amp]
 
-        self.params.add_calc(['angle', 'emit', 'e0', 'pmass'],
+        self.params.add_calc(['angle', 'emit', 'e0', 'pmass', 'amp'],
                              ['ax0s', 'ax1s'],
                              partial(calc_amp, db=self.db))
-
-        # DEBUGGING:
-        self._logger.info('Parameters:')
-        [self._logger.info(f'{k}: {v}') for k, v in self.params.placeholders.items()]
 
         self.madx_input["mask_file"] = mask_file
         self.oneturn_sixtrack_input['temp'] = ['fort.3']
