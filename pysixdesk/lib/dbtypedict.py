@@ -13,7 +13,7 @@ class SQLiteDict(object):
         self.db_type = {}
         self.db_type['NoneType'] = 'NULL'
         self.db_type['int'] = 'INT'
-        self.db_type['float'] = 'FLOAT'
+        self.db_type['float'] = 'DOUBLE'
         self.db_type['str'] = 'TEXT'
         self.db_type['bytes'] = 'BLOB'
         self.db_type['tuple'] = 'INT'
