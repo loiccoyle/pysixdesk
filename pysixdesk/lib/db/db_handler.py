@@ -50,11 +50,11 @@ class DBHandler():
             engine = create_engine(f'{self.dialect}://{self.user}:{self.passwd}@{self.host}:{self.port}/{self.database}')
         return engine
 
-    def init_tables(self):
+    def init_tables(self, tables=None):
         """
         Initializes the tables. Will lock in the tables' columns.
         """
-        Base.metadata.create_all(self.engine)
+        Base.metadata.create_all(self.engine, tables=tables)
 
     def session(self, **kwargs):
         """Creates a session bound to the engine.
@@ -76,8 +76,7 @@ class DBHandler():
         Args:
             **kwargs: Forwared to sqlalchemy.sessionmaker
         """
-        Session = sessionmaker(bind=self.engine, **kwargs)
-        session = Session()
+        session = self.session(**kwargs)
         try:
             yield session
             session.commit()
@@ -91,7 +90,7 @@ class DBHandler():
         """Helper function to quickly add a table entry.
 
         Args:
-            table_entry (mapped classes): Table entry to add, see .tables.py
+            table_entry (mapped classes): Table entry to add, see tables.py.
             file.
             **kwargs: Forwarded to self.session_scope()
         """

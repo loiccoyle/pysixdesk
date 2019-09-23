@@ -100,7 +100,7 @@ class PreprocessTask(Base):
 
 class OneturnSixtrackResult(Base):
 
-    __tablename__ = 'oneturn_sixtrack_result'
+    __tablename__ = 'oneturn_sixtrack_results'
 
     id = Column(Integer, primary_key=True)
     task_id = Column(Integer, ForeignKey('preprocess_task.id'))
@@ -168,7 +168,7 @@ class SixtrackTask(Base):
 
 class SixtrackResult(Base):
 
-    __tablename__ = 'sixtrack_result'
+    __tablename__ = 'sixtrack_results'
 
     id = Column(Integer, primary_key=True)
     task_id = Column(Integer, ForeignKey('sixtrack_task.id'))
@@ -298,3 +298,10 @@ class Templates(Base):
     id = Column(Integer, primary_key=True)
     mask = Column(LargeBinary)
     fort_3 = Column(LargeBinary)
+
+
+BASIC_TABLES = [Templates.__table__, Env.__table__, BoincVars.__table__]
+PREPROCESSING_TABLES = [PreprocessWU.__table__, PreprocessTask.__table__,
+                        OneturnSixtrackResult.__table__]
+SIXTRACK_TABLES = [SixtrackWU.__table__, SixtrackTask.__table__,
+                   SixtrackResult.__table__]
