@@ -20,8 +20,7 @@ Base = declarative_base()
 
 
 class DynamicCols:
-    '''
-    This class adds a class method which would allow for dynamic setting of
+    '''This class adds a class method which allows for dynamic setting of
     columns.
     '''
 
@@ -36,7 +35,7 @@ class DynamicCols:
             "names".
 
         Returns:
-            mapped class: modified mapped class.
+            mapped class: mapped class with added columns.
 
         Raises:
             ValueError: If "col_type" if list and there is a length mismatch.
@@ -61,19 +60,17 @@ class PreprocessWU(Base, DynamicCols):
 
     id = Column(Integer, primary_key=True)
     job_name = Column(String)
+    input_file = Column(LargeBinary)
     batch_name = Column(String)
     unique_id = Column(Integer)
     status = Column(String)
-    task_id = Column(Integer)
+    task_id = Column(Integer)  # is this preprocess_task.id ?
     mtime = Column(BigInteger)
 
     preprocess_task = relationship('PreprocessTask', backref='preprocess_wu')
-    oneturn_sixtrack_result = relationship('OneturnSixtrackResult',
-                                           backref='preprocess_wu')
-    sixtrack_wu = relationship('SixtrackWU', backref='preprocess_wu')
 
 
-class PreprocessTask(Base):
+class PreprocessTask(Base, DynamicCols):
 
     __tablename__ = 'preprocess_task'
 
@@ -86,16 +83,22 @@ class PreprocessTask(Base):
     job_stdlog = Column(LargeBinary)
     status = Column(String)
     mtime = Column(BigInteger)
-    fort_2 = Column(LargeBinary)
-    fort_3_mad = Column(LargeBinary)
-    fort_3_aux = Column(LargeBinary)
-    fort_3_aper = Column(LargeBinary)
-    fort_8 = Column(LargeBinary)
-    fort_16 = Column(LargeBinary)
-    fort_34 = Column(LargeBinary)
+    # fort_2 = Column(LargeBinary)
+    # fort_3_mad = Column(LargeBinary)
+    # fort_3_aux = Column(LargeBinary)
+    # fort_3_aper = Column(LargeBinary)
+    # fort_8 = Column(LargeBinary)
+    # fort_16 = Column(LargeBinary)
+    # fort_34 = Column(LargeBinary)
 
-    oneturn_sixtrack_result = relationship('OneturnSixtrackResult',
-                                           backref='preprocess_task')
+# ONETURN
+
+
+class OneturnSixtrackWU(Base):
+
+    __tablename__ = 'oneturn_sixtrack_results'
+
+    id = Column(Integer, primary_key=True)
 
 
 class OneturnSixtrackResult(Base):
@@ -128,6 +131,11 @@ class OneturnSixtrackResult(Base):
     tuney2 = Column(Float)
     mtime = Column(BigInteger)
 
+    preprocess_wu = relationship('PreprocessWU',
+                                 backref='oneturn_sixtrack_results')
+    preprocess_task = relationship('PreprocessTask',
+                                   backref='oneturn_sixtrack_results')
+
 # SIXTRACK
 
 
@@ -141,15 +149,16 @@ class SixtrackWU(Base, DynamicCols):
     batch_name = Column(String)
     unique_id = Column(String)
     status = Column(String)
-    task_id = Column(Integer)
+    task_id = Column(Integer)  # is this the sixtrack_task.id ?
     boinc = Column(String)
     mtime = Column(BigInteger)
 
+    preprocess_wu = relationship('PreprocessWU', backref='sixtrack_wu')
     sixtrack_task = relationship('SixtrackTask', backref='sixtrack_wu')
     sixtrack_result = relationship('SixtrackResult', backref='sixtrack_wu')
 
 
-class SixtrackTask(Base):
+class SixtrackTask(Base, DynamicCols):
 
     __tablename__ = 'sixtrack_task'
 
@@ -161,7 +170,7 @@ class SixtrackTask(Base):
     job_stdlog = Column(LargeBinary)
     status = Column(LargeBinary)
     mtime = Column(BigInteger)
-    fort_10 = Column(LargeBinary)
+    # fort_10 = Column(LargeBinary)
 
     sixtrack_result = relationship('SixtrackResult', backref='sixtrack_task')
 
@@ -212,8 +221,8 @@ class SixtrackResult(Base):
     dist = Column(Float)
     distp = Column(Float)
 
-    resxact = Column(Float)
-    resyact = Column(Float)
+    resxfact = Column(Float)
+    resyfact = Column(Float)
     resorder = Column(Float)
 
     sturns1 = Column(Float)
@@ -240,6 +249,10 @@ class SixtrackResult(Base):
     sigymaxnld = Column(Float)
     sigyavgnld = Column(Float)
 
+    cx = Column(Float)
+    cy = Column(Float)
+    csigma = Column(Float)
+
     delta = Column(Float)
     dnms = Column(Float)
 
@@ -247,61 +260,160 @@ class SixtrackResult(Base):
     version = Column(Float)
     mtime = Column(BigInteger)
 
+# COLLIMATION
+
+
+class CollimationLosses(Base):
+
+    __tablename__ = 'collimation_losses'
+
+    id = Column(Integer, primary_key=True)
+    task_id = Column(Integer, ForeignKey('sixtrack_task.id'))
+    icoll = Column(Integer)
+    iturn = Column(Integer)
+    np = Column(Integer)
+    nabs = Column(Integer)
+    dp = Column(Float)
+    dxp = Column(Float)
+    dyp = Column(Float)
+    mtime = Column(BigInteger)
+
+    sixtrack_task = relationship('SixtrackTask',
+                                 backref='collimation_losses')
+
+
+class ApertureLosses(Base):
+
+    __tablename__ = 'aperture_losses'
+
+    id = Column(Integer, primary_key=True)
+    task_id = Column(Integer, ForeignKey('sixtrack_task.id'))
+    turn = Column(Integer)
+    block = Column(Integer)
+    bezid = Column(Integer)
+    bez = Column(String)
+    slos = Column(Float)
+    fluka_uid = Column(Integer)
+    fluka_gen = Column(Integer)
+    fluka_weight = Column(Float)
+    x = Column(Float)
+    xp = Column(Float)
+    y = Column(Float)
+    yp = Column(Float)
+    etot = Column(Float)
+    dE = Column(Float)
+    dT = Column(Float)
+    A_atom = Column(Integer)
+    Z_atom = Column(Integer)
+    mtime = Column(BigInteger)
+
+    sixtrack_task = relationship('SixtrackTask', backref='aperture_losses')
+
+
+# STATE
+
+
+class InitState(Base):
+
+    __tablename__ = 'init_state'
+
+    id = Column(Integer, primary_key=True)
+    task_id = Column(Integer, ForeignKey('sixtrack_task.id'))
+    part_id = Column(Integer)
+    parent_id = Column(Integer)
+    lost = Column(String)
+    x = Column(Float)
+    y = Column(Float)
+    xp = Column(Float)
+    yp = Column(Float)
+    sigma = Column(Float)
+    dp = Column(Float)
+    p = Column(Float)
+    e = Column(Float)
+    mtime = Column(BigInteger)
+
+    sixtrack_task = relationship('SixtrackTask', backref='init_state')
+
+
+class FinalState(Base):
+
+    __tablename__ = 'final_state'
+
+    id = Column(Integer, primary_key=True)
+    task_id = Column(Integer, ForeignKey('sixtrack_task.id'))
+    part_id = Column(Integer)
+    parent_id = Column(Integer)
+    lost = Column(String)
+    x = Column(Float)
+    y = Column(Float)
+    xp = Column(Float)
+    yp = Column(Float)
+    sigma = Column(Float)
+    dp = Column(Float)
+    p = Column(Float)
+    e = Column(Float)
+    mtime = Column(BigInteger)
+
+    sixtrack_task = relationship('SixtrackTask', backref='final_state')
+
+
 # OTHER
 
 
-class BoincVars(Base):
+class BoincVars(Base, DynamicCols):
 
     __tablename__ = 'boinc_vars'
 
     id = Column(Integer, primary_key=True)
-    wu_name = Column(String)
-    fpops_estimate = Column(Float)
-    fpops_bound = Column(Float)
-    mem_bound = Column(Integer)
-    disk_bound = Column(Integer)
-    delay_bound = Column(Integer)
-    redundance = Column(Integer)
-    copies = Column(Integer)
-    errors = Column(Integer)
-    issues = Column(Integer)
-    results_witout_concensus = Column(Integer)
-    app_name = Column(String)
-    app_ver = Column(Integer)
+    # wu_name = Column(String)
+    # fpops_estimate = Column(Float)
+    # fpops_bound = Column(Float)
+    # mem_bound = Column(Integer)
+    # disk_bound = Column(Integer)
+    # delay_bound = Column(Integer)
+    # redundance = Column(Integer)
+    # copies = Column(Integer)
+    # errors = Column(Integer)
+    # issues = Column(Integer)
+    # results_without_concensus = Column(Integer)
+    # app_name = Column(String)
+    # app_ver = Column(Integer)
 
 
-class Env(Base):
+class Env(Base, DynamicCols):
 
     __tablename__ = 'env'
 
     id = Column(Integer, primary_key=True)
-    madx_exe = Column(String)
-    sixtrack_exe = Column(String)
-    study_path = Column(String)
-    preprocess_in = Column(String)
-    preprocess_out = Column(String)
-    sixtrack_in = Column(String)
-    sixtrack_out = Column(String)
-    gather = Column(String)
-    templates = Column(String)
-    boinc_spool = Column(String)
-    test_turn = Column(Integer)
-    bonc_work = Column(String)
-    boinc_results = Column(String)
-    surv_percent = Column(Integer)
+    # madx_exe = Column(String)
+    # sixtrack_exe = Column(String)
+    # study_path = Column(String)
+    # preprocess_in = Column(String)
+    # preprocess_out = Column(String)
+    # sixtrack_in = Column(String)
+    # sixtrack_out = Column(String)
+    # gather = Column(String)
+    # templates = Column(String)
+    # boinc_spool = Column(String)
+    # test_turn = Column(Integer)
+    # bonc_work = Column(String)
+    # boinc_results = Column(String)
+    # surv_percent = Column(Integer)
 
 
-class Templates(Base):
+class Templates(Base, DynamicCols):
 
     __tablename__ = 'templates'
 
     id = Column(Integer, primary_key=True)
-    mask = Column(LargeBinary)
-    fort_3 = Column(LargeBinary)
+    # mask = Column(LargeBinary)
+    # fort_3 = Column(LargeBinary)
 
 
 BASIC_TABLES = [Templates.__table__, Env.__table__, BoincVars.__table__]
-PREPROCESSING_TABLES = [PreprocessWU.__table__, PreprocessTask.__table__,
-                        OneturnSixtrackResult.__table__]
+PREPROCESSING_TABLES = [PreprocessWU.__table__, PreprocessTask.__table__]
 SIXTRACK_TABLES = [SixtrackWU.__table__, SixtrackTask.__table__,
                    SixtrackResult.__table__]
+
+ONETURN_TABLES = [OneturnSixtrackWU.__table__, OneturnSixtrackResult.__table__]
+COLLIMATION_TABLES = [CollimationLosses.__table__, ApertureLosses.__table__]

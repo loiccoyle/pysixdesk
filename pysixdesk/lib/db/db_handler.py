@@ -3,9 +3,10 @@ from sqlalchemy.orm import sessionmaker
 from contextlib import contextmanager
 
 from tables import Base
+import tables
 
 
-class DBHandler():
+class DBHandler:
     def __init__(self, dialect, database, user=None, passwd=None, host=None,
                  port=None):
         """Helper class for handling the database.
@@ -40,7 +41,6 @@ class DBHandler():
             sqlalchemy.engine.base.Engine: sql engine.
         """
         if self.dialect == 'sqlite':
-            # absolute path
             engine = create_engine(f'{self.dialect}:///{self.database}')
         elif self.dialect == 'mysql':
             # create database
@@ -51,8 +51,7 @@ class DBHandler():
         return engine
 
     def init_tables(self, tables=None):
-        """
-        Initializes the tables. Will lock in the tables' columns.
+        """Initializes the tables. Will lock in the tables' columns.
         """
         Base.metadata.create_all(self.engine, tables=tables)
 
@@ -96,3 +95,8 @@ class DBHandler():
         """
         with self.session_scope(**kwargs) as sess:
             sess.add(table_entry)
+
+
+if __name__ == '__main__':
+    db = DBHandler('sqlite', 'test.db')
+    db.init_tables(tables=tables.PREPROCESSING_TABLES)
